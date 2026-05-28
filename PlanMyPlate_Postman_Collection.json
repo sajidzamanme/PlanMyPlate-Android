@@ -1,0 +1,1045 @@
+{
+	"info": {
+		"_postman_id": "planmyplate-api-collection",
+		"name": "PlanMyPlate API",
+		"description": "Complete API collection for PlanMyPlate backend with all endpoints for authentication, users, recipes, meal plans, grocery lists, inventory, and more.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8081/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Sign Up",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"token\", jsonData.token);",
+									"    pm.collectionVariables.set(\"userId\", jsonData.userId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"securePassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/signup",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "signup"]
+						}
+					}
+				},
+				{
+					"name": "Sign In",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"token\", jsonData.token);",
+									"    pm.collectionVariables.set(\"userId\", jsonData.userId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"securePassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/signin",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "signin"]
+						}
+					}
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"john.doe@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/forgot-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "forgot-password"]
+						}
+					}
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"resetToken\": \"1234\",\n  \"newPassword\": \"newSecurePassword456\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/reset-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "reset-password"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Users",
+			"item": [
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["users", "me"]
+						}
+					}
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["users", "{{userId}}"]
+						}
+					}
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John Updated\",\n  \"userName\": \"johndoe\",\n  \"age\": 30,\n  \"weight\": 75.5,\n  \"budget\": 500.00\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["users", "{{userId}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["users", "{{userId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. User Preferences",
+			"item": [
+				{
+					"name": "Get User Preferences",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/user-preferences/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["user-preferences", "{{userId}}"]
+						}
+					}
+				},
+				{
+					"name": "Set/Update User Preferences",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"diet\": \"Vegan\",\n  \"allergies\": [\"Peanuts\", \"Shellfish\"],\n  \"dislikes\": [\"Mushrooms\"],\n  \"servings\": 4,\n  \"budget\": 200.00\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/user-preferences/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["user-preferences", "{{userId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Recipes",
+			"item": [
+				{
+					"name": "Get All Recipes",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/recipes",
+							"host": ["{{baseUrl}}"],
+							"path": ["recipes"]
+						}
+					}
+				},
+				{
+					"name": "Get Recipe by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/recipes/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["recipes", "1"]
+						}
+					}
+				},
+				{
+					"name": "Search Recipes by Name",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/recipes/search?name=pasta",
+							"host": ["{{baseUrl}}"],
+							"path": ["recipes", "search"],
+							"query": [
+								{
+									"key": "name",
+									"value": "pasta"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Filter Recipes by Calories",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/recipes/filter/calories?minCalories=200&maxCalories=500",
+							"host": ["{{baseUrl}}"],
+							"path": ["recipes", "filter", "calories"],
+							"query": [
+								{
+									"key": "minCalories",
+									"value": "200"
+								},
+								{
+									"key": "maxCalories",
+									"value": "500"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Recipe",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Custom Pasta\",\n  \"description\": \"My special pasta recipe\",\n  \"calories\": 450,\n  \"prepTime\": 30,\n  \"cookTime\": 20,\n  \"servings\": 4,\n  \"instructions\": \"1. Boil water\\n2. Cook pasta\\n3. Add sauce\",\n  \"imageUrl\": \"https://example.com/custom_pasta.jpg\",\n  \"ingredients\": [\n    {\n      \"ingId\": 1,\n      \"quantity\": 200,\n      \"unit\": \"grams\"\n    },\n    {\n      \"ingId\": 2,\n      \"quantity\": 100,\n      \"unit\": \"ml\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/recipes",
+							"host": ["{{baseUrl}}"],
+							"path": ["recipes"]
+						}
+					}
+				},
+				{
+					"name": "Update Recipe",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Pasta\",\n  \"description\": \"Updated description\",\n  \"calories\": 500,\n  \"prepTime\": 25,\n  \"cookTime\": 15,\n  \"servings\": 3,\n  \"instructions\": \"Updated instructions\",\n  \"imageUrl\": \"https://example.com/updated_pasta.jpg\",\n  \"ingredients\": [\n    {\n      \"ingId\": 1,\n      \"quantity\": 250,\n      \"unit\": \"grams\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/recipes/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["recipes", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Recipe",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/recipes/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["recipes", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Ingredients",
+			"item": [
+				{
+					"name": "Get All Ingredients",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ingredients",
+							"host": ["{{baseUrl}}"],
+							"path": ["ingredients"]
+						}
+					}
+				},
+				{
+					"name": "Get Ingredient by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ingredients/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["ingredients", "1"]
+						}
+					}
+				},
+				{
+					"name": "Search Ingredients by Name",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ingredients/search?name=tomato",
+							"host": ["{{baseUrl}}"],
+							"path": ["ingredients", "search"],
+							"query": [
+								{
+									"key": "name",
+									"value": "tomato"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Filter Ingredients by Price",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ingredients/filter/price?minPrice=1.0&maxPrice=10.0",
+							"host": ["{{baseUrl}}"],
+							"path": ["ingredients", "filter", "price"],
+							"query": [
+								{
+									"key": "minPrice",
+									"value": "1.0"
+								},
+								{
+									"key": "maxPrice",
+									"value": "10.0"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "6. Meal Plans",
+			"item": [
+				{
+					"name": "Get Weekly Meal Plans",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/meal-plans/user/{{userId}}/weekly",
+							"host": ["{{baseUrl}}"],
+							"path": ["meal-plans", "user", "{{userId}}", "weekly"]
+						}
+					}
+				},
+				{
+					"name": "Get All Meal Plans by User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/meal-plans/user/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["meal-plans", "user", "{{userId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Meal Plan by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/meal-plans/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["meal-plans", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Meal Plan (Simple)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"startDate\": \"2026-02-15\",\n  \"duration\": 7\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/meal-plans/user/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["meal-plans", "user", "{{userId}}"]
+						}
+					}
+				},
+				{
+					"name": "Create Meal Plan with Recipes",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"recipeIds\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],\n  \"duration\": 7,\n  \"startDate\": \"2026-02-15\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/meal-plans/user/{{userId}}/create",
+							"host": ["{{baseUrl}}"],
+							"path": ["meal-plans", "user", "{{userId}}", "create"]
+						}
+					}
+				},
+				{
+					"name": "Update Meal Plan",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"completed\",\n  \"duration\": 7\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/meal-plans/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["meal-plans", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Meal Plan",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/meal-plans/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["meal-plans", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "7. Grocery Lists",
+			"item": [
+				{
+					"name": "Get Grocery Lists by User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/grocery-lists/user/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["grocery-lists", "user", "{{userId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Grocery List by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/grocery-lists/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["grocery-lists", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Grocery List",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"active\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/grocery-lists/user/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["grocery-lists", "user", "{{userId}}"]
+						}
+					}
+				},
+				{
+					"name": "Update Grocery List Item",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"quantity\": 3,\n  \"unit\": \"Pack\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/grocery-lists/1/items/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["grocery-lists", "1", "items", "1"]
+						}
+					}
+				},
+				{
+					"name": "Purchase Items",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ingredientIds\": [1, 2, 3]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/grocery-lists/1/purchase",
+							"host": ["{{baseUrl}}"],
+							"path": ["grocery-lists", "1", "purchase"]
+						}
+					}
+				},
+				{
+					"name": "Delete Grocery List",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/grocery-lists/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["grocery-lists", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "8. Inventory (Pantry)",
+			"item": [
+				{
+					"name": "Get User Inventory",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/inventory/user/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["inventory", "user", "{{userId}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Inventory Items",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/inventory/1/items",
+							"host": ["{{baseUrl}}"],
+							"path": ["inventory", "1", "items"]
+						}
+					}
+				},
+				{
+					"name": "Add Item to Inventory",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"quantity\": 2,\n  \"expiryDate\": \"2026-12-31\",\n  \"ingId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/inventory/1/items",
+							"host": ["{{baseUrl}}"],
+							"path": ["inventory", "1", "items"]
+						}
+					}
+				},
+				{
+					"name": "Update Inventory Item",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"quantity\": 5,\n  \"expiryDate\": \"2026-12-31\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/inventory/items/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["inventory", "items", "1"]
+						}
+					}
+				},
+				{
+					"name": "Remove Item from Inventory",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/inventory/items/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["inventory", "items", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "9. Reference Data",
+			"item": [
+				{
+					"name": "Get All Diets",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/reference-data/diets",
+							"host": ["{{baseUrl}}"],
+							"path": ["reference-data", "diets"]
+						}
+					}
+				},
+				{
+					"name": "Get All Allergies",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/reference-data/allergies",
+							"host": ["{{baseUrl}}"],
+							"path": ["reference-data", "allergies"]
+						}
+					}
+				},
+				{
+					"name": "Get All Dislikes (Ingredients)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/reference-data/dislikes",
+							"host": ["{{baseUrl}}"],
+							"path": ["reference-data", "dislikes"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "10. File Uploads",
+			"item": [
+				{
+					"name": "Upload Image",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/files/upload",
+							"host": ["{{baseUrl}}"],
+							"path": ["files", "upload"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "11. AI Recipe Generation",
+			"item": [
+				{
+					"name": "Generate Recipe with AI",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"availableIngredients\": [\"chicken\", \"tomatoes\", \"garlic\", \"pasta\"],\n  \"maxCalories\": 600,\n  \"cuisineType\": \"Italian\",\n  \"allergies\": [\"peanuts\"],\n  \"dietaryPreference\": \"None\",\n  \"mood\": \"Comfort Food\",\n  \"servings\": 4,\n  \"maxCookingTime\": 45\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ai/generate-recipe",
+							"host": ["{{baseUrl}}"],
+							"path": ["ai", "generate-recipe"]
+						}
+					}
+				},
+				{
+					"name": "Generate Meal Plan with AI",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ai/generate-meal-plan?userId={{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["ai", "generate-meal-plan"],
+							"query": [
+								{
+									"key": "userId",
+									"value": "{{userId}}"
+								}
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}
