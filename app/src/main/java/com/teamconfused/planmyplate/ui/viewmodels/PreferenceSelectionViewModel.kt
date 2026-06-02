@@ -1,0 +1,213 @@
+package com.teamconfused.planmyplate.ui.viewmodels
+
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.teamconfused.planmyplate.data.model.UserPreferencesRequest
+import com.teamconfused.planmyplate.network.IngredientService
+import com.teamconfused.planmyplate.network.UserPreferencesService
+import com.teamconfused.planmyplate.util.SessionManager
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+data class PreferenceSelectionUiState(
+    val currentStep: Int = 0,
+    val selectedDiet: String? = null,
+    val selectedAllergies: Set<String> = emptySet(),
+    val selectedDislikes: Set<String> = emptySet(),
+    val selectedServings: Int? = null,
+    val selectedBudget: Float = 50F,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val availableDiets: List<String> = emptyList(),
+    val availableIngredients: List<String> = emptyList()
+)
+
+class PreferenceSelectionViewModel(
+    private val userPreferencesService: UserPreferencesService,
+    private val ingredientService: IngredientService,
+    private val sessionManager: SessionManager
+) : ViewModel() {
+    private val _uiState = MutableStateFlow(PreferenceSelectionUiState())
+    val uiState: StateFlow<PreferenceSelectionUiState> = _uiState.asStateFlow()
+
+    init {
+        loadReferenceData()
+        loadExistingPreferences()
+    }
+
+    private fun loadReferenceData() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                // Parallel fetch
+                val diets = userPreferencesService.getDiets().mapNotNull { it.dietName }
+                val ingredients = ingredientService.getAllIngredients().mapNotNull { it.name }
+
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        availableDiets = diets,
+                        availableIngredients = ingredients
+                    ) 
+                }
+            } catch (e: Exception) {
+                Log.e("PreferenceSelectionViewModel", "Failed to load reference data: ${e.message}", e)
+                 _uiState.update { 
+                    it.copy(
+                        isLoading = false, 
+                        errorMessage = "Failed to load options: ${e.localizedMessage}"
+                    ) 
+                }
+            }
+        }
+    }
+
+    fun onDietSelected(diet: String) {
+        _uiState.update { it.copy(selectedDiet = diet) }
+    }
+
+    fun onAllergyToggled(allergy: String) {
+        _uiState.update {
+            val current = it.selectedAllergies
+            if (current.contains(allergy)) {
+                it.copy(selectedAllergies = current - allergy)
+            } else {
+                it.copy(selectedAllergies = current + allergy)
+            }
+        }
+    }
+
+    fun onDislikeToggled(dislike: String) {
+        _uiState.update {
+            val current = it.selectedDislikes
+            if (current.contains(dislike)) {
+                it.copy(selectedDislikes = current - dislike)
+            } else {
+                it.copy(selectedDislikes = current + dislike)
+            }
+        }
+    }
+
+    fun onServingsSelected(servings: Int) {
+        _uiState.update { it.copy(selectedServings = servings) }
+    }
+
+    fun onBudgetSelected(budget: Float) {
+        _uiState.update { it.copy(selectedBudget = budget) }
+    }
+
+    fun onNextStep(onComplete: () -> Unit) {
+        val currentState = _uiState.value
+        if (currentState.currentStep < 4) {
+            _uiState.update { it.copy(currentStep = it.currentStep + 1) }
+        } else {
+            savePreferences(onComplete)
+        }
+    }
+
+    private fun loadExistingPreferences() {
+        val userId = sessionManager.getUserId()
+        if (userId == -1 || userId == 0) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val token = sessionManager.getAuthToken() ?: return@launch
+                val authHeader = "Bearer $token"
+                val response = userPreferencesService.getPreferences(authHeader, userId)
+                
+                _uiState.update { it.copy(
+                    selectedDiet = response.diet,
+                    selectedAllergies = response.allergies?.toSet() ?: emptySet(),
+                    selectedDislikes = response.dislikes?.toSet() ?: emptySet(),
+                    selectedServings = response.servings,
+                    selectedBudget = response.budget ?: 50f,
+                    isLoading = false
+                )}
+            } catch (e: Exception) {
+                Log.e("PreferenceSelectionViewModel", "Failed to load existing preferences: ${e.message}", e)
+                // If it's a 404, we just stop loading; it's okay for new users
+                _uiState.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+
+    private fun savePreferences(onComplete: () -> Unit) {
+        val currentState = _uiState.value
+        val userId = sessionManager.getUserId()
+        
+        if (userId == -1) {
+            _uiState.update { it.copy(errorMessage = "User not logged in") }
+            return
+        }
+        
+        // Admin bypass - skip server call
+        if (userId == 0) {
+            _uiState.update { it.copy(isLoading = false) }
+            onComplete()
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            try {
+                // Convert sets to lists to match the backend's expectation
+                val allergiesList = if (currentState.selectedAllergies.isEmpty()) null 
+                                   else currentState.selectedAllergies.toList()
+                val dislikesList = if (currentState.selectedDislikes.isEmpty()) null 
+                                  else currentState.selectedDislikes.toList()
+
+                val request = UserPreferencesRequest(
+                    userId = userId,
+                    diet = currentState.selectedDiet,
+                    allergies = allergiesList,
+                    dislikes = dislikesList,
+                    servings = currentState.selectedServings,
+                    budget = currentState.selectedBudget
+                )
+                val token = sessionManager.getAuthToken() ?: return@launch
+                val authHeader = "Bearer $token"
+                userPreferencesService.setPreferences(authHeader, userId, request)
+                _uiState.update { it.copy(isLoading = false) }
+                onComplete()
+            } catch (e: Exception) {
+                Log.e("PreferenceSelectionViewModel", "Failed to save preferences: ${e.message}", e)
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false, 
+                        errorMessage = e.localizedMessage ?: "Failed to save preferences"
+                    ) 
+                }
+            }
+        }
+    }
+
+    suspend fun isPreferencesSet(id: Int): Boolean {
+        return try {
+            val token = sessionManager.getAuthToken() ?: return false
+            val authHeader = "Bearer $token"
+            val response = userPreferencesService.getPreferences(authHeader, id)
+            // Check if the returned response has actual data.
+            response.diet != null || response.servings != null
+        } catch (e: Exception) {
+            Log.e("PreferenceSelectionViewModel", "Failed to check if preferences are set: ${e.message}", e)
+            // If 404 is thrown, it usually means preferences don't exist
+            false
+        }
+    }
+
+    fun onPreviousStep(onBack: () -> Unit) {
+        _uiState.update {
+            if (it.currentStep > 0) {
+                it.copy(currentStep = it.currentStep - 1)
+            } else {
+                onBack()
+                it
+            }
+        }
+    }
+}
