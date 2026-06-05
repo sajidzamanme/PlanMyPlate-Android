@@ -21,4 +21,6 @@ val appModule = module {
     single { RetrofitClient.inventoryService }
     single { RetrofitClient.aiService }
     single { RetrofitClient.expiryService }
+    single { RetrofitClient.favoriteService }
+    single { RetrofitClient.ratingService }
 }

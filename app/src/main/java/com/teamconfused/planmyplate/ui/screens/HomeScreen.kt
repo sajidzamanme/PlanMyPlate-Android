@@ -1,5 +1,6 @@
 package com.teamconfused.planmyplate.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,9 +17,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.teamconfused.planmyplate.domain.model.Recipe
 import com.teamconfused.planmyplate.ui.components.HorizontalRecipeCard
+import com.teamconfused.planmyplate.ui.components.MealStatus
+import com.teamconfused.planmyplate.ui.viewmodels.ExpiryViewModel
 import com.teamconfused.planmyplate.ui.viewmodels.HomeViewModel
 import com.teamconfused.planmyplate.util.SessionManager
 import java.time.LocalDate
@@ -30,14 +35,17 @@ import org.koin.compose.koinInject
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = koinViewModel(),
+    expiryViewModel: ExpiryViewModel = koinViewModel(),
     onNavigateToMealPlan: () -> Unit,
-    onNavigateToRecipeDetails: (recipeId: Int, fromDashboard: Boolean, mealType: String?) -> Unit
+    onNavigateToRecipeDetails: (recipeId: Int, fromDashboard: Boolean, mealType: String?) -> Unit,
+    onNavigateToExpiryAlerts: () -> Unit
 ) {
     val context = LocalContext.current
     val sessionManager: SessionManager = koinInject()
     val hasMealPlans = sessionManager.hasMealPlans()
     
     val uiState by viewModel.uiState.collectAsState()
+    val expiryState by expiryViewModel.uiState.collectAsState()
     
     var recipeToShowDetails by remember { mutableStateOf<Recipe?>(null) }
     var mealTypeToShowDetails by remember { mutableStateOf<String?>(null) }
@@ -46,6 +54,7 @@ fun HomeScreen(
     // Initial load on first composition
     LaunchedEffect(Unit) {
         viewModel.fetchTodaysMeals()
+        expiryViewModel.fetchSoonToExpireItems()
     }
     
     // Sync refresh state with loading state
@@ -74,13 +83,18 @@ fun HomeScreen(
             }
         }
     ) { paddingValues ->
+        val soonToExpireCount = expiryState.soonToExpire?.totalCount ?: 0
+
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = {
                 isRefreshing = true
                 viewModel.fetchTodaysMeals()
+                expiryViewModel.fetchSoonToExpireItems()
             },
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier
+                .padding(paddingValues)
+                .statusBarsPadding()
         ) {
             if (hasMealPlans) {
                 DashboardWithMeals(
@@ -90,7 +104,9 @@ fun HomeScreen(
                         recipeToShowDetails = recipe 
                         mealTypeToShowDetails = type
                     },
-                    onNavigateToMealPlan = onNavigateToMealPlan
+                    onNavigateToMealPlan = onNavigateToMealPlan,
+                    soonToExpireItemsCount = soonToExpireCount,
+                    onExpiryBannerClick = onNavigateToExpiryAlerts
                 )
             } else {
                 EmptyDashboard(onNavigateToMealPlan = onNavigateToMealPlan)
@@ -203,7 +219,9 @@ fun DashboardWithMeals(
     uiState: com.teamconfused.planmyplate.ui.viewmodels.HomeUiState,
     onRetry: () -> Unit,
     onRecipeClick: (Recipe, String?) -> Unit,
-    onNavigateToMealPlan: () -> Unit
+    onNavigateToMealPlan: () -> Unit,
+    soonToExpireItemsCount: Int = 0,
+    onExpiryBannerClick: () -> Unit = {}
 ) {
     val currentDate = LocalDate.now()
     val formatter = DateTimeFormatter.ofPattern("EEEE, MMMM d")
@@ -257,6 +275,43 @@ fun DashboardWithMeals(
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+        if (soonToExpireItemsCount > 0) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onExpiryBannerClick() },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(com.teamconfused.planmyplate.R.drawable.delete_icon),
+                        contentDescription = "Warning",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Pantry Expiry Warning",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = "You have $soonToExpireItemsCount items expiring soon. Tap to view.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+        }
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -319,26 +374,40 @@ fun DashboardWithMeals(
             .filter { it.date == today && it.mealType.equalsIgnoreCase(type) }
             .map { it.recipe }
 
-        if (!uiState.handledMealTypes.contains("Breakfast")) {
-            val planned = uiState.todayBreakfast
-            val additional = getAdditionalForType("Breakfast")
-            if (planned != null || additional.isNotEmpty()) {
-                MealSection("Breakfast", planned, additional) { onRecipeClick(it, "Breakfast") }
-            }
+        val plannedBreakfast = uiState.todayBreakfast
+        val additionalBreakfast = getAdditionalForType("Breakfast")
+        if (plannedBreakfast != null || additionalBreakfast.isNotEmpty()) {
+            MealSection(
+                mealType = "Breakfast", 
+                plannedRecipe = plannedBreakfast, 
+                additionalRecipes = additionalBreakfast,
+                cookedMeals = uiState.cookedMeals,
+                skippedMeals = uiState.skippedMeals
+            ) { onRecipeClick(it, "Breakfast") }
         }
-        if (!uiState.handledMealTypes.contains("Lunch")) {
-            val planned = uiState.todayLunch
-            val additional = getAdditionalForType("Lunch")
-            if (planned != null || additional.isNotEmpty()) {
-                MealSection("Lunch", planned, additional) { onRecipeClick(it, "Lunch") }
-            }
+
+        val plannedLunch = uiState.todayLunch
+        val additionalLunch = getAdditionalForType("Lunch")
+        if (plannedLunch != null || additionalLunch.isNotEmpty()) {
+            MealSection(
+                mealType = "Lunch", 
+                plannedRecipe = plannedLunch, 
+                additionalRecipes = additionalLunch,
+                cookedMeals = uiState.cookedMeals,
+                skippedMeals = uiState.skippedMeals
+            ) { onRecipeClick(it, "Lunch") }
         }
-        if (!uiState.handledMealTypes.contains("Dinner")) {
-            val planned = uiState.todayDinner
-            val additional = getAdditionalForType("Dinner")
-            if (planned != null || additional.isNotEmpty()) {
-                MealSection("Dinner", planned, additional) { onRecipeClick(it, "Dinner") }
-            }
+
+        val plannedDinner = uiState.todayDinner
+        val additionalDinner = getAdditionalForType("Dinner")
+        if (plannedDinner != null || additionalDinner.isNotEmpty()) {
+            MealSection(
+                mealType = "Dinner", 
+                plannedRecipe = plannedDinner, 
+                additionalRecipes = additionalDinner,
+                cookedMeals = uiState.cookedMeals,
+                skippedMeals = uiState.skippedMeals
+            ) { onRecipeClick(it, "Dinner") }
         }
         
         HorizontalDivider(
@@ -377,8 +446,16 @@ fun MealSection(
     mealType: String,
     plannedRecipe: Recipe?,
     additionalRecipes: List<Recipe>,
+    cookedMeals: Set<String>,
+    skippedMeals: Set<String>,
     onRecipeClick: (Recipe) -> Unit
 ) {
+    val status = when {
+        cookedMeals.contains(mealType) -> MealStatus.DONE
+        skippedMeals.contains(mealType) -> MealStatus.SKIPPED
+        else -> MealStatus.NONE
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = mealType,
@@ -387,7 +464,11 @@ fun MealSection(
         )
         
         plannedRecipe?.let { recipe ->
-            HorizontalRecipeCard(recipe = recipe, onClick = { onRecipeClick(recipe) })
+            HorizontalRecipeCard(
+                recipe = recipe, 
+                onClick = { onRecipeClick(recipe) },
+                status = status
+            )
         }
         
         additionalRecipes.forEach { recipe ->

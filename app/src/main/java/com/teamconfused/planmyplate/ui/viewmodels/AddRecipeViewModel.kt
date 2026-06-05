@@ -44,11 +44,30 @@ data class AddRecipeUiState(
 
 class AddRecipeViewModel(
     private val recipeService: RecipeService,
+    private val ingredientService: com.teamconfused.planmyplate.network.IngredientService,
     private val sessionManager: com.teamconfused.planmyplate.util.SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddRecipeUiState())
     val uiState: StateFlow<AddRecipeUiState> = _uiState.asStateFlow()
+
+    private val _searchResults = MutableStateFlow<List<com.teamconfused.planmyplate.data.model.IngredientDto>>(emptyList())
+    val searchResults: StateFlow<List<com.teamconfused.planmyplate.data.model.IngredientDto>> = _searchResults.asStateFlow()
+
+    fun searchIngredients(query: String) {
+        if (query.isBlank()) {
+            _searchResults.value = emptyList()
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val results = ingredientService.searchIngredientsByName(query)
+                _searchResults.value = results
+            } catch (e: Exception) {
+                Log.e("AddRecipeViewModel", "Search failed: ${e.message}", e)
+            }
+        }
+    }
 
     fun updateName(name: String) {
         _uiState.update { it.copy(name = name) }

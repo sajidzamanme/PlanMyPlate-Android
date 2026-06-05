@@ -4,8 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.teamconfused.planmyplate.data.model.UserPreferencesRequest
+import com.teamconfused.planmyplate.domain.repository.UserPreferencesRepository
 import com.teamconfused.planmyplate.network.IngredientService
-import com.teamconfused.planmyplate.network.UserPreferencesService
 import com.teamconfused.planmyplate.util.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,8 +18,10 @@ data class PreferenceSelectionUiState(
     val selectedDiet: String? = null,
     val selectedAllergies: Set<String> = emptySet(),
     val selectedDislikes: Set<String> = emptySet(),
-    val selectedServings: Int? = null,
     val selectedBudget: Float = 50F,
+    val selectedHeight: String = "",
+    val selectedWeight: String = "",
+    val selectedGender: String? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val availableDiets: List<String> = emptyList(),
@@ -27,7 +29,7 @@ data class PreferenceSelectionUiState(
 )
 
 class PreferenceSelectionViewModel(
-    private val userPreferencesService: UserPreferencesService,
+    private val userPreferencesRepository: UserPreferencesRepository,
     private val ingredientService: IngredientService,
     private val sessionManager: SessionManager
 ) : ViewModel() {
@@ -44,7 +46,7 @@ class PreferenceSelectionViewModel(
             _uiState.update { it.copy(isLoading = true) }
             try {
                 // Parallel fetch
-                val diets = userPreferencesService.getDiets().mapNotNull { it.dietName }
+                val diets = userPreferencesRepository.getDiets().mapNotNull { it.dietName }
                 val ingredients = ingredientService.getAllIngredients().mapNotNull { it.name }
 
                 _uiState.update { 
@@ -92,8 +94,16 @@ class PreferenceSelectionViewModel(
         }
     }
 
-    fun onServingsSelected(servings: Int) {
-        _uiState.update { it.copy(selectedServings = servings) }
+    fun onGenderSelected(gender: String?) {
+        _uiState.update { it.copy(selectedGender = gender) }
+    }
+
+    fun onHeightChanged(height: String) {
+        _uiState.update { it.copy(selectedHeight = height) }
+    }
+
+    fun onWeightChanged(weight: String) {
+        _uiState.update { it.copy(selectedWeight = weight) }
     }
 
     fun onBudgetSelected(budget: Float) {
@@ -118,14 +128,17 @@ class PreferenceSelectionViewModel(
             try {
                 val token = sessionManager.getAuthToken() ?: return@launch
                 val authHeader = "Bearer $token"
-                val response = userPreferencesService.getPreferences(authHeader, userId)
+                val response = userPreferencesRepository.getPreferences(authHeader, userId)
+                sessionManager.saveUserPreferences(response)
                 
                 _uiState.update { it.copy(
                     selectedDiet = response.diet,
                     selectedAllergies = response.allergies?.toSet() ?: emptySet(),
                     selectedDislikes = response.dislikes?.toSet() ?: emptySet(),
-                    selectedServings = response.servings,
                     selectedBudget = response.budget ?: 50f,
+                    selectedHeight = response.height?.toString() ?: "",
+                    selectedWeight = response.weight?.toString() ?: "",
+                    selectedGender = response.gender,
                     isLoading = false
                 )}
             } catch (e: Exception) {
@@ -166,12 +179,15 @@ class PreferenceSelectionViewModel(
                     diet = currentState.selectedDiet,
                     allergies = allergiesList,
                     dislikes = dislikesList,
-                    servings = currentState.selectedServings,
-                    budget = currentState.selectedBudget
+                    budget = currentState.selectedBudget,
+                    height = currentState.selectedHeight.toFloatOrNull(),
+                    weight = currentState.selectedWeight.toFloatOrNull(),
+                    gender = currentState.selectedGender
                 )
                 val token = sessionManager.getAuthToken() ?: return@launch
                 val authHeader = "Bearer $token"
-                userPreferencesService.setPreferences(authHeader, userId, request)
+                val savedPrefs = userPreferencesRepository.setPreferences(authHeader, userId, request)
+                sessionManager.saveUserPreferences(savedPrefs)
                 _uiState.update { it.copy(isLoading = false) }
                 onComplete()
             } catch (e: Exception) {
@@ -190,9 +206,9 @@ class PreferenceSelectionViewModel(
         return try {
             val token = sessionManager.getAuthToken() ?: return false
             val authHeader = "Bearer $token"
-            val response = userPreferencesService.getPreferences(authHeader, id)
+            val response = userPreferencesRepository.getPreferences(authHeader, id)
             // Check if the returned response has actual data.
-            response.diet != null || response.servings != null
+            response.prefId != null || response.diet != null || response.budget != null
         } catch (e: Exception) {
             Log.e("PreferenceSelectionViewModel", "Failed to check if preferences are set: ${e.message}", e)
             // If 404 is thrown, it usually means preferences don't exist

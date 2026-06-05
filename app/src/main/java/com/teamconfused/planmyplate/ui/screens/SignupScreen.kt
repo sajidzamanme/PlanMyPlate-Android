@@ -22,6 +22,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import com.teamconfused.planmyplate.R
 import com.teamconfused.planmyplate.ui.components.InputLabel
 import com.teamconfused.planmyplate.ui.theme.PlanMyPlateTheme
@@ -40,9 +44,11 @@ fun SignupScreen(
     onTermsAcceptedChange: (Boolean) -> Unit,
     onLoginClick: () -> Unit = {},
     onSignupClick: () -> Unit = {},
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onDismissError: () -> Unit = {}
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -61,13 +67,52 @@ fun SignupScreen(
                 ),
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
+        if (showDatePicker) {
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = remember(uiState.dateOfBirth) {
+                    runCatching {
+                        java.time.LocalDate.parse(uiState.dateOfBirth)
+                            .atStartOfDay(java.time.ZoneId.of("UTC"))
+                            .toInstant()
+                            .toEpochMilli()
+                    }.getOrNull()
+                }
+            )
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val localDate = java.time.Instant.ofEpochMilli(millis)
+                                .atZone(java.time.ZoneId.of("UTC"))
+                                .toLocalDate()
+                            onDateOfBirthChange(localDate.toString())
+                        }
+                        showDatePicker = false
+                    }) {
+                        Text("OK")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) {
+                        Text("Cancel")
+                    }
+                }
+            ) {
+                DatePicker(state = datePickerState)
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 24.dp)
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.Start
         ) {
@@ -136,14 +181,27 @@ fun SignupScreen(
             )
 
             InputLabel(text = "Date of Birth (YYYY-MM-DD)")
-            OutlinedTextField(
-                value = uiState.dateOfBirth,
-                onValueChange = onDateOfBirthChange,
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-            )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = uiState.dateOfBirth,
+                    onValueChange = {},
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    singleLine = true,
+                    readOnly = true,
+                    trailingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = "Select Date"
+                        )
+                    }
+                )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable { showDatePicker = true }
+                )
+            }
 
             InputLabel(text = "Password")
             OutlinedTextField(
@@ -155,7 +213,14 @@ fun SignupScreen(
                 isError = uiState.passwordError != null,
                 supportingText = { uiState.passwordError?.let { Text(it) } },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                singleLine = true
+                singleLine = true,
+                trailingIcon = {
+                    val icon = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                    val description = if (passwordVisible) "Hide password" else "Show password"
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = icon, contentDescription = description)
+                    }
+                }
             )
 
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -201,6 +266,19 @@ fun SignupScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
+
+    if (uiState.errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = onDismissError,
+            title = { Text("Sign up Failed") },
+            text = { Text(uiState.errorMessage) },
+            confirmButton = {
+                TextButton(onClick = onDismissError) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }
 

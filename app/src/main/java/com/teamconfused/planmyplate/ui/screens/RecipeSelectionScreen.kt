@@ -269,7 +269,9 @@ private fun BottomBar(selected: Int, accent: Color, onDone: () -> Unit) {
     Surface(
         color          = MaterialTheme.colorScheme.surface,
         tonalElevation = 3.dp,
-        modifier       = Modifier.fillMaxWidth(),
+        modifier       = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding(),
     ) {
         Row(
             modifier = Modifier

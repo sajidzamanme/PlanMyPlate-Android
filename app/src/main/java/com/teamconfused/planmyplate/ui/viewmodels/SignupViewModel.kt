@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.teamconfused.planmyplate.data.model.SignupRequest
 import com.teamconfused.planmyplate.network.AuthService
+import com.teamconfused.planmyplate.network.UserPreferencesService
+import com.teamconfused.planmyplate.data.mapper.toDomain
 import com.teamconfused.planmyplate.util.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +34,7 @@ data class SignupUiState(
 
 class SignupViewModel(
     private val authService: AuthService,
+    private val userPreferencesService: UserPreferencesService,
     private val sessionManager: SessionManager
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SignupUiState())
@@ -65,7 +68,7 @@ class SignupViewModel(
         _uiState.update { it.copy(isTermsAccepted = accepted, termsError = null) }
     }
 
-    fun onSignupClick(onSignupSuccess: () -> Unit) {
+    fun onSignupClick(onSignupSuccess: (hasPreferences: Boolean) -> Unit) {
         val currentState = _uiState.value
         var isValid = true
 
@@ -111,7 +114,7 @@ class SignupViewModel(
                 sessionManager.saveUserId(0)
                 sessionManager.saveAuthToken("admin-bypass-token")
                 _uiState.update { it.copy(isLoading = false) }
-                onSignupSuccess()
+                onSignupSuccess(false)
                 return
             }
             
@@ -128,14 +131,29 @@ class SignupViewModel(
                     )
                     val response = authService.signup(request)
                     val userId = response.userId
+                    
+                    var hasPreferences = false
                     if (userId != null) {
                         sessionManager.saveUserId(userId)
                         response.accessToken?.let { sessionManager.saveAuthToken(it) }
+                        
+                        // Check if preferences exist for newly signed up user (usually false, but check just in case)
+                        try {
+                            val token = response.accessToken ?: ""
+                            val authHeader = "Bearer $token"
+                            val prefsResponse = userPreferencesService.getPreferences(authHeader, userId)
+                            val prefs = prefsResponse.toDomain()
+                            sessionManager.saveUserPreferences(prefs)
+                            hasPreferences = prefs.prefId != null || prefs.diet != null || prefs.budget != null
+                        } catch (e: Exception) {
+                            Log.e("SignupViewModel", "Failed to fetch user preferences: ${e.message}", e)
+                            hasPreferences = false
+                        }
                     } else {
                         Log.e("SignupViewModel", "Signup successful but no userId found in response: $response")
                     }
                     _uiState.update { it.copy(isLoading = false) }
-                    onSignupSuccess()
+                    onSignupSuccess(hasPreferences)
                 } catch (e: Exception) {
                     Log.e("SignupViewModel", "Signup failed: ${e.message}", e)
                     _uiState.update { 
@@ -147,5 +165,9 @@ class SignupViewModel(
                 }
             }
         }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 }

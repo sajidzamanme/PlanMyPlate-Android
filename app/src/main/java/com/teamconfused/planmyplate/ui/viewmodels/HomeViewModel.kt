@@ -23,14 +23,18 @@ data class HomeUiState(
     val upcomingMessage: String? = null,
     val errorMessage: String? = null,
     val consumedCalories: Int = 0,
-    val handledMealTypes: Set<String> = emptySet(),
+    val cookedMeals: Set<String> = emptySet(),
+    val skippedMeals: Set<String> = emptySet(),
     val additionalMeals: List<AdditionalMeal> = emptyList()
 ) {
     val todayCalories: Int
-        get() = (if (!handledMealTypes.contains("Breakfast")) todayBreakfast?.calories ?: 0 else 0) + 
-                (if (!handledMealTypes.contains("Lunch")) todayLunch?.calories ?: 0 else 0) + 
-                (if (!handledMealTypes.contains("Dinner")) todayDinner?.calories ?: 0 else 0) +
+        get() = (todayBreakfast?.calories ?: 0) + 
+                (todayLunch?.calories ?: 0) + 
+                (todayDinner?.calories ?: 0) +
                 additionalMeals.sumOf { it.recipe.calories }
+
+    val handledMealTypes: Set<String>
+        get() = cookedMeals + skippedMeals
 }
 
 class HomeViewModel(
@@ -48,13 +52,15 @@ class HomeViewModel(
 
     private fun loadLocalData() {
         val today = java.time.LocalDate.now().toString()
-        val handled = sessionManager.getHandledMeals()[today] ?: emptySet()
+        val cooked = sessionManager.getCookedMeals()[today] ?: emptySet()
+        val skipped = sessionManager.getSkippedMeals()[today] ?: emptySet()
         val calories = sessionManager.getConsumedCalories()[today] ?: 0
         val additional = sessionManager.getAdditionalMeals().filter { it.date == today }
         
         _uiState.update { 
             it.copy(
-                handledMealTypes = handled,
+                cookedMeals = cooked,
+                skippedMeals = skipped,
                 consumedCalories = calories,
                 additionalMeals = additional
             )
@@ -168,32 +174,50 @@ class HomeViewModel(
 
     fun markAsCooked(mealType: String?, calories: Int, recipeId: Int? = null) {
         val today = java.time.LocalDate.now().toString()
-        _uiState.update { 
-            val newHandled = if (mealType != null) it.handledMealTypes + mealType else it.handledMealTypes
-            
+        if (mealType == null) return
+
+        _uiState.update { state ->
+            if (state.cookedMeals.contains(mealType)) {
+                return@update state // already cooked
+            }
+
+            val wasSkipped = state.skippedMeals.contains(mealType)
+            val newCooked = state.cookedMeals + mealType
+            val newSkipped = if (wasSkipped) state.skippedMeals - mealType else state.skippedMeals
+
+            // Persist cooked
+            val allCooked = sessionManager.getCookedMeals().toMutableMap()
+            allCooked[today] = newCooked
+            sessionManager.saveCookedMeals(allCooked)
+
+            // Persist skipped
+            val allSkipped = sessionManager.getSkippedMeals().toMutableMap()
+            allSkipped[today] = newSkipped
+            sessionManager.saveSkippedMeals(allSkipped)
+
             // Persist handled
             val allHandled = sessionManager.getHandledMeals().toMutableMap()
-            allHandled[today] = newHandled
+            allHandled[today] = newCooked + newSkipped
             sessionManager.saveHandledMeals(allHandled)
-            
+
             // Persist calories
             val allCalories = sessionManager.getConsumedCalories().toMutableMap()
             allCalories[today] = (allCalories[today] ?: 0) + calories
             sessionManager.saveConsumedCalories(allCalories)
-            
+
             // Handle additional meals
-            val newAdditionalInState = if (recipeId != null) it.additionalMeals.filter { r -> r.recipeId != recipeId } else it.additionalMeals
+            val newAdditionalInState = if (recipeId != null) state.additionalMeals.filter { r -> r.recipeId != recipeId } else state.additionalMeals
             if (recipeId != null) {
                 val allAdditional = sessionManager.getAdditionalMeals().filter { r -> 
-                    // Remove if it's the one we cooked, matching by ID AND date (to be safe)
                     !(r.recipeId == recipeId && r.date == today)
                 }
                 sessionManager.saveAdditionalMeals(allAdditional)
             }
 
-            it.copy(
-                consumedCalories = it.consumedCalories + calories,
-                handledMealTypes = newHandled,
+            state.copy(
+                consumedCalories = state.consumedCalories + calories,
+                cookedMeals = newCooked,
+                skippedMeals = newSkipped,
                 additionalMeals = newAdditionalInState
             )
         }
@@ -201,16 +225,51 @@ class HomeViewModel(
 
     fun skipMeal(mealType: String?, recipeId: Int? = null) {
         val today = java.time.LocalDate.now().toString()
-        _uiState.update {
-            val newHandled = if (mealType != null) it.handledMealTypes + mealType else it.handledMealTypes
-            
+        if (mealType == null) return
+
+        _uiState.update { state ->
+            if (state.skippedMeals.contains(mealType)) {
+                return@update state // already skipped
+            }
+
+            val wasCooked = state.cookedMeals.contains(mealType)
+            val newSkipped = state.skippedMeals + mealType
+            val newCooked = if (wasCooked) state.cookedMeals - mealType else state.cookedMeals
+
+            // Persist cooked
+            val allCooked = sessionManager.getCookedMeals().toMutableMap()
+            allCooked[today] = newCooked
+            sessionManager.saveCookedMeals(allCooked)
+
+            // Persist skipped
+            val allSkipped = sessionManager.getSkippedMeals().toMutableMap()
+            allSkipped[today] = newSkipped
+            sessionManager.saveSkippedMeals(allSkipped)
+
             // Persist handled
             val allHandled = sessionManager.getHandledMeals().toMutableMap()
-            allHandled[today] = newHandled
+            allHandled[today] = newCooked + newSkipped
             sessionManager.saveHandledMeals(allHandled)
 
+            // Persist calories (subtract if was cooked previously)
+            val caloriesToSubtract = if (wasCooked) {
+                val recipe = when (mealType) {
+                    "Breakfast" -> state.todayBreakfast
+                    "Lunch" -> state.todayLunch
+                    "Dinner" -> state.todayDinner
+                    else -> state.additionalMeals.find { it.recipeId == recipeId }?.recipe
+                }
+                recipe?.calories ?: 0
+            } else 0
+
+            if (caloriesToSubtract > 0) {
+                val allCalories = sessionManager.getConsumedCalories().toMutableMap()
+                allCalories[today] = maxOf(0, (allCalories[today] ?: 0) - caloriesToSubtract)
+                sessionManager.saveConsumedCalories(allCalories)
+            }
+
             // Handle additional meals
-            val newAdditionalInState = if (recipeId != null) it.additionalMeals.filter { r -> r.recipeId != recipeId } else it.additionalMeals
+            val newAdditionalInState = if (recipeId != null) state.additionalMeals.filter { r -> r.recipeId != recipeId } else state.additionalMeals
             if (recipeId != null) {
                 val allAdditional = sessionManager.getAdditionalMeals().filter { r -> 
                     !(r.recipeId == recipeId && r.date == today)
@@ -218,8 +277,10 @@ class HomeViewModel(
                 sessionManager.saveAdditionalMeals(allAdditional)
             }
 
-            it.copy(
-                handledMealTypes = newHandled,
+            state.copy(
+                consumedCalories = maxOf(0, state.consumedCalories - caloriesToSubtract),
+                cookedMeals = newCooked,
+                skippedMeals = newSkipped,
                 additionalMeals = newAdditionalInState
             )
         }

@@ -3,7 +3,13 @@ package com.teamconfused.planmyplate.ui.viewmodels
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.teamconfused.planmyplate.data.model.RecipeRatingRequest
 import com.teamconfused.planmyplate.domain.model.Recipe
+import com.teamconfused.planmyplate.domain.model.RecipeRating
+import com.teamconfused.planmyplate.domain.model.RecipeRatingSummary
+import com.teamconfused.planmyplate.domain.model.UserFavorite
+import com.teamconfused.planmyplate.domain.repository.FavoriteRepository
+import com.teamconfused.planmyplate.domain.repository.RatingRepository
 import com.teamconfused.planmyplate.domain.usecase.FilterRecipesUseCase
 import com.teamconfused.planmyplate.domain.usecase.GetAllRecipesUseCase
 import com.teamconfused.planmyplate.domain.usecase.GetRecipeUseCase
@@ -23,6 +29,8 @@ class RecipeViewModel(
     private val getAllRecipesUseCase: GetAllRecipesUseCase,
     private val filterRecipesUseCase: FilterRecipesUseCase,
     private val getRecipeUseCase: GetRecipeUseCase,
+    private val favoriteRepository: FavoriteRepository,
+    private val ratingRepository: RatingRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
@@ -40,6 +48,19 @@ class RecipeViewModel(
 
     private val _isDetailsLoading = MutableStateFlow(false)
     val isDetailsLoading: StateFlow<Boolean> = _isDetailsLoading.asStateFlow()
+
+    // Favourites & Ratings Flows
+    private val _favoritesState = MutableStateFlow<List<UserFavorite>>(emptyList())
+    val favoritesState: StateFlow<List<UserFavorite>> = _favoritesState.asStateFlow()
+
+    private val _isFavoriteState = MutableStateFlow(false)
+    val isFavoriteState: StateFlow<Boolean> = _isFavoriteState.asStateFlow()
+
+    private val _myRatingState = MutableStateFlow<RecipeRating?>(null)
+    val myRatingState: StateFlow<RecipeRating?> = _myRatingState.asStateFlow()
+
+    private val _ratingSummaryState = MutableStateFlow<RecipeRatingSummary?>(null)
+    val ratingSummaryState: StateFlow<RecipeRatingSummary?> = _ratingSummaryState.asStateFlow()
 
     init {
     }
@@ -66,7 +87,6 @@ class RecipeViewModel(
             _recommendedRecipesState.value = RecipeUiState.Loading
             try {
                 val all = getAllRecipesUseCase(authHeader)
-                // Simple recommendation logic: take 5 random
                 _recommendedRecipesState.value = RecipeUiState.Success(all.shuffled().take(5))
             } catch (e: Exception) {
                 Log.e("RecipeViewModel", "Failed to fetch recommended recipes: ${e.message}", e)
@@ -108,9 +128,123 @@ class RecipeViewModel(
 
     fun clearSelectedRecipe() {
         _selectedRecipeState.value = null
+        _myRatingState.value = null
+        _ratingSummaryState.value = null
+        _isFavoriteState.value = false
     }
 
     fun searchRecipes(query: String) {
-        // Implement search using usage case or repository if needed
+    }
+
+    // --- Favorites Actions ---
+
+    fun fetchFavorites() {
+        val token = sessionManager.getAuthToken() ?: return
+        val authHeader = "Bearer $token"
+        viewModelScope.launch {
+            try {
+                val list = favoriteRepository.getFavorites(authHeader)
+                _favoritesState.value = list
+            } catch (e: Exception) {
+                Log.e("RecipeViewModel", "Failed to fetch favorites: ${e.message}", e)
+            }
+        }
+    }
+
+    fun addFavorite(recipeId: Int) {
+        val token = sessionManager.getAuthToken() ?: return
+        val authHeader = "Bearer $token"
+        viewModelScope.launch {
+            try {
+                favoriteRepository.addFavorite(authHeader, recipeId)
+                _isFavoriteState.value = true
+                fetchFavorites()
+            } catch (e: Exception) {
+                Log.e("RecipeViewModel", "Failed to add favorite: ${e.message}", e)
+            }
+        }
+    }
+
+    fun removeFavorite(recipeId: Int) {
+        val token = sessionManager.getAuthToken() ?: return
+        val authHeader = "Bearer $token"
+        viewModelScope.launch {
+            try {
+                favoriteRepository.removeFavorite(authHeader, recipeId)
+                _isFavoriteState.value = false
+                fetchFavorites()
+            } catch (e: Exception) {
+                Log.e("RecipeViewModel", "Failed to remove favorite: ${e.message}", e)
+            }
+        }
+    }
+
+    fun checkFavoriteStatus(recipeId: Int) {
+        val token = sessionManager.getAuthToken() ?: return
+        val authHeader = "Bearer $token"
+        viewModelScope.launch {
+            try {
+                val isFav = favoriteRepository.isFavorite(authHeader, recipeId)
+                _isFavoriteState.value = isFav
+            } catch (e: Exception) {
+                Log.e("RecipeViewModel", "Failed to check favorite status: ${e.message}", e)
+            }
+        }
+    }
+
+    // --- Ratings Actions ---
+
+    fun rateRecipe(recipeId: Int, rating: Int, review: String?) {
+        val token = sessionManager.getAuthToken() ?: return
+        val authHeader = "Bearer $token"
+        viewModelScope.launch {
+            try {
+                val request = RecipeRatingRequest(recipeId = recipeId, rating = rating, review = review)
+                val response = ratingRepository.rateRecipe(authHeader, request)
+                _myRatingState.value = response
+                fetchRatingSummary(recipeId)
+            } catch (e: Exception) {
+                Log.e("RecipeViewModel", "Failed to rate recipe: ${e.message}", e)
+            }
+        }
+    }
+
+    fun fetchRatingSummary(recipeId: Int) {
+        viewModelScope.launch {
+            try {
+                val summary = ratingRepository.getRecipeRatingSummary(recipeId)
+                _ratingSummaryState.value = summary
+            } catch (e: Exception) {
+                Log.e("RecipeViewModel", "Failed to fetch rating summary: ${e.message}", e)
+            }
+        }
+    }
+
+    fun fetchMyRating(recipeId: Int) {
+        val token = sessionManager.getAuthToken() ?: return
+        val authHeader = "Bearer $token"
+        viewModelScope.launch {
+            try {
+                val rating = ratingRepository.getMyRatingForRecipe(authHeader, recipeId)
+                _myRatingState.value = rating
+            } catch (e: Exception) {
+                Log.e("RecipeViewModel", "Failed to fetch my rating: ${e.message}", e)
+                _myRatingState.value = null
+            }
+        }
+    }
+
+    fun deleteRating(recipeId: Int) {
+        val token = sessionManager.getAuthToken() ?: return
+        val authHeader = "Bearer $token"
+        viewModelScope.launch {
+            try {
+                ratingRepository.deleteMyRating(authHeader, recipeId)
+                _myRatingState.value = null
+                fetchRatingSummary(recipeId)
+            } catch (e: Exception) {
+                Log.e("RecipeViewModel", "Failed to delete rating: ${e.message}", e)
+            }
+        }
     }
 }

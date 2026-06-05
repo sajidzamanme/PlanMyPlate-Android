@@ -3,14 +3,11 @@ package com.teamconfused.planmyplate.ui.viewmodels
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.teamconfused.planmyplate.data.mapper.toDomain
 import com.teamconfused.planmyplate.data.model.PurchaseItemDetail
 import com.teamconfused.planmyplate.data.model.PurchaseItemsRequest
 import com.teamconfused.planmyplate.domain.model.GroceryList
 import com.teamconfused.planmyplate.domain.model.GroceryListItem
-import com.teamconfused.planmyplate.network.GroceryListService
-import com.teamconfused.planmyplate.network.InventoryService
-import com.teamconfused.planmyplate.network.MealPlanService
+import com.teamconfused.planmyplate.domain.repository.GroceryRepository
 import com.teamconfused.planmyplate.util.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,16 +18,14 @@ import kotlinx.coroutines.launch
 data class GroceryUiState(
     val groceryLists: List<GroceryList> = emptyList(),
     val activeListItems: List<GroceryListItem> = emptyList(),
-    val checkedItems: Set<Int> = emptySet(), // IDs of items checked for purchase
+    val purchaseQuantities: Map<Int, Double> = emptyMap(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val activeListId: Int? = null
 )
 
 class GroceryViewModel(
-    private val groceryListService: GroceryListService,
-    private val mealPlanService: MealPlanService,
-    private val inventoryService: InventoryService,
+    private val groceryRepository: GroceryRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
@@ -52,8 +47,7 @@ class GroceryViewModel(
                 val authHeader = "Bearer $token"
                 
                 // 1. Fetch all lists
-                val listDtos = groceryListService.getGroceryListsForUser(authHeader, userId)
-                val lists = listDtos.map { it.toDomain() }
+                val lists = groceryRepository.getGroceryListsForUser(authHeader, userId)
                 
                 // 3. Process Active Grocery List
                 val activeList = lists.find { it.status == "active" } ?: lists.firstOrNull()
@@ -75,15 +69,15 @@ class GroceryViewModel(
     }
 
     
-    // Toggle check status of an item
-    fun toggleItemCheck(itemId: Int) {
-        _uiState.update { 
-            val current = it.checkedItems
-            if (current.contains(itemId)) {
-                it.copy(checkedItems = current - itemId)
+    fun setPurchaseQuantity(itemId: Int, quantity: Double?) {
+        _uiState.update { state ->
+            val updatedMap = state.purchaseQuantities.toMutableMap()
+            if (quantity == null || quantity <= 0.0) {
+                updatedMap.remove(itemId)
             } else {
-                it.copy(checkedItems = current + itemId)
+                updatedMap[itemId] = quantity
             }
+            state.copy(purchaseQuantities = updatedMap)
         }
     }
 
@@ -108,15 +102,43 @@ class GroceryViewModel(
             try {
                 _uiState.value.activeListId?.let { listId ->
                     val itemId = item.id ?: return@let
-                    // Note: sending { "quantity": newQty }
                     val token = sessionManager.getAuthToken() ?: return@launch
                     val authHeader = "Bearer $token"
-                    val req = mapOf("quantity" to newQty)
-                    groceryListService.updateGroceryListItem(authHeader, listId, itemId, req)
+                    groceryRepository.updateGroceryListItem(authHeader, listId, itemId, newQty, item.unit)
                 }
             } catch (e: Exception) {
                 Log.e("GroceryViewModel", "Failed to update grocery list item quantity: ${e.message}", e)
-                // Ignore 404 if endpoint doesn't exist yet, or handle error
+                println("Failed to sync quantity: ${e.message}")
+            }
+        }
+    }
+
+    fun setListQuantity(item: GroceryListItem, newQty: Double) {
+        val validatedQty = newQty.coerceAtLeast(0.0)
+        val currentQty = item.quantity ?: 1.0
+        if (validatedQty == currentQty) return
+
+        // 1. Optimistic Local Update
+        _uiState.update { state ->
+            val updatedItems = state.activeListItems.map { listItem ->
+                if (listItem.id == item.id) listItem.copy(quantity = validatedQty) else listItem
+            }
+            state.copy(activeListItems = updatedItems)
+        }
+
+        // 2. Debounced API Call
+        updateJob?.cancel()
+        updateJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(500) // Debounce 500ms
+            try {
+                _uiState.value.activeListId?.let { listId ->
+                    val itemId = item.id ?: return@let
+                    val token = sessionManager.getAuthToken() ?: return@launch
+                    val authHeader = "Bearer $token"
+                    groceryRepository.updateGroceryListItem(authHeader, listId, itemId, validatedQty, item.unit)
+                }
+            } catch (e: Exception) {
+                Log.e("GroceryViewModel", "Failed to update grocery list item quantity: ${e.message}", e)
                 println("Failed to sync quantity: ${e.message}")
             }
         }
@@ -124,17 +146,18 @@ class GroceryViewModel(
 
     fun purchaseSelectedItems(onSuccess: () -> Unit) {
         val listId = _uiState.value.activeListId ?: return
-        val checkedIds = _uiState.value.checkedItems
-        if (checkedIds.isEmpty()) return
+        val purchaseQuantities = _uiState.value.purchaseQuantities
+        if (purchaseQuantities.isEmpty()) return
         
-        // Map checked items to PurchaseItemDetail with current UI quantities
+        // Map selected items to PurchaseItemDetail with custom quantities
         val purchaseItems = _uiState.value.activeListItems
-            .filter { checkedIds.contains(it.id) }
             .mapNotNull { item ->
                 val itemId = item.id ?: return@mapNotNull null
+                val selectedQty = purchaseQuantities[itemId] ?: return@mapNotNull null
+                if (selectedQty <= 0.0) return@mapNotNull null
                 PurchaseItemDetail(
                     itemId = itemId,
-                    quantity = item.quantity ?: 1.0
+                    quantity = selectedQty
                 )
             }
 
@@ -147,20 +170,16 @@ class GroceryViewModel(
                 val authHeader = "Bearer $token"
 
                 val request = PurchaseItemsRequest(items = purchaseItems)
-                val response = groceryListService.purchaseItems(authHeader, listId, request)
+                groceryRepository.purchaseItems(authHeader, listId, request)
                 
-                if (response.isSuccessful) {
-                    _uiState.update { 
-                        it.copy(
-                            isLoading = false, 
-                            checkedItems = emptySet()
-                        ) 
-                    }
-                    fetchGroceryLists() // Refresh to see reduced list
-                    onSuccess()
-                } else {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Purchase failed") }
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false, 
+                        purchaseQuantities = emptyMap()
+                    ) 
                 }
+                fetchGroceryLists() // Refresh to see reduced list
+                onSuccess()
             } catch (e: Exception) {
                 Log.e("GroceryViewModel", "Failed to purchase selected items: ${e.message}", e)
                 _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }

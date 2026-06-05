@@ -11,8 +11,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,6 +53,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.teamconfused.planmyplate.R
 import com.teamconfused.planmyplate.ui.components.InputLabel
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import com.teamconfused.planmyplate.ui.theme.PlanMyPlateTheme
 import com.teamconfused.planmyplate.ui.viewmodels.LoginUiState
 
@@ -58,7 +68,8 @@ fun LoginScreen(
     onLoginClick: () -> Unit,
     onSignupClick: () -> Unit,
     onBackClick: () -> Unit,
-    onForgotPasswordClick: () -> Unit = {}
+    onForgotPasswordClick: () -> Unit = {},
+    onDismissError: () -> Unit = {}
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -79,13 +90,17 @@ fun LoginScreen(
                 )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 24.dp),
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.Start
         ) {
             Text(
@@ -137,7 +152,14 @@ fun LoginScreen(
                     keyboardType = KeyboardType.Password,
                     imeAction = ImeAction.Done
                 ),
-                singleLine = true
+                singleLine = true,
+                trailingIcon = {
+                    val icon = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                    val description = if (passwordVisible) "Hide password" else "Show password"
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = icon, contentDescription = description)
+                    }
+                }
             )
 
             // Forgot Password
@@ -179,52 +201,7 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // OR Divider
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
-                Text(
-                    text = "Or",
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Google Button
-            OutlinedButton(
-                onClick = { /* Handle Google */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-            ) {
-                Text("Sign In with Google", color = MaterialTheme.colorScheme.onSurface)
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Facebook Button
-            Button(
-                onClick = { /* Handle Facebook */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2))
-            ) {
-                Text("Sign In with Facebook", color = Color.White)
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Footer
             Row(
@@ -243,6 +220,19 @@ fun LoginScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
+
+    if (uiState.errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = onDismissError,
+            title = { Text("Login Failed") },
+            text = { Text(uiState.errorMessage) },
+            confirmButton = {
+                TextButton(onClick = onDismissError) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }
 

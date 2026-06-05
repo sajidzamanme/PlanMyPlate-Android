@@ -36,6 +36,21 @@ sealed class Screen {
     @Serializable
     data object Settings : Screen()
 
+    @Serializable
+    data object Favorites : Screen()
+
+    @Serializable
+    data object Profile : Screen()
+
+    @Serializable
+    data object EditProfile : Screen()
+
+    @Serializable
+    data object ExpiryAlerts : Screen()
+
+    @Serializable
+    data object AddRecipe : Screen()
+
     // Detail screens
     @Serializable
     data class RecipeDetails(

@@ -45,10 +45,17 @@ fun RecipeDetailsScreen(
     val recipe by viewModel.selectedRecipeState.collectAsState()
     val isLoading by viewModel.isDetailsLoading.collectAsState()
 
+    val isFavorite by viewModel.isFavoriteState.collectAsState()
+    val myRating by viewModel.myRatingState.collectAsState()
+    val ratingSummary by viewModel.ratingSummaryState.collectAsState()
+
     var isAdded by remember { mutableStateOf(isInitiallyAdded) }
 
     LaunchedEffect(recipeId) {
         viewModel.getRecipeById(recipeId)
+        viewModel.checkFavoriteStatus(recipeId)
+        viewModel.fetchRatingSummary(recipeId)
+        viewModel.fetchMyRating(recipeId)
     }
 
     if (isLoading) {
@@ -61,8 +68,9 @@ fun RecipeDetailsScreen(
     recipe?.let { currentRecipe ->
         Scaffold(
             bottomBar = {
-                if (fromDashboard) {
+                if (fromDashboard && mealType != null) {
                     Surface(
+                        modifier = Modifier.navigationBarsPadding(),
                         tonalElevation = 8.dp,
                         shadowElevation = 8.dp
                     ) {
@@ -101,8 +109,9 @@ fun RecipeDetailsScreen(
                             }
                         }
                     }
-                } else if (showControls) {
+                } else if (!fromDashboard && showControls) {
                     Surface(
+                        modifier = Modifier.navigationBarsPadding(),
                         tonalElevation = 8.dp,
                         shadowElevation = 8.dp
                     ) {
@@ -138,7 +147,8 @@ fun RecipeDetailsScreen(
                         }
                     }
                 }
-            }
+            },
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { padding ->
             Box(modifier = Modifier.fillMaxSize()) {
                 Column(
@@ -223,6 +233,34 @@ fun RecipeDetailsScreen(
                             )
                         }
 
+                        // Macros Panel
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "Nutritional Information",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly
+                                ) {
+                                    MacroItem("Protein", "${currentRecipe.protein ?: 0.0}g")
+                                    MacroItem("Carbs", "${currentRecipe.carbs ?: 0.0}g")
+                                    MacroItem("Fat", "${currentRecipe.fat ?: 0.0}g")
+                                    MacroItem("Fiber", "${currentRecipe.fiber ?: 0.0}g")
+                                }
+                            }
+                        }
+
                         // Tab Selection (Pill shape)
                         var selectedTab by remember { mutableIntStateOf(0) }
                         val tabs = listOf("Description", "Ingredients", "Instructions")
@@ -273,6 +311,139 @@ fun RecipeDetailsScreen(
                                 }
                             }
                         }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        
+                        // Ratings Section
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = "Ratings & Reviews",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            // Summary Card
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    val avg = ratingSummary?.averageRating ?: 0.0
+                                    Text(
+                                        text = String.format("%.1f", avg),
+                                        style = MaterialTheme.typography.displaySmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "out of 5",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        text = "${ratingSummary?.totalRatings ?: 0} ratings",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Row {
+                                        val avg = ratingSummary?.averageRating ?: 0.0
+                                        for (i in 1..5) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.ic_ai_stars),
+                                                contentDescription = null,
+                                                tint = if (i <= avg) Color(0xFFFFB300) else Color.LightGray,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // User Rating Selector / Review Form
+                            var userRating by remember(myRating) { mutableIntStateOf(myRating?.rating ?: 0) }
+                            var reviewText by remember(myRating) { mutableStateOf(myRating?.review ?: "") }
+
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                                ),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Text(
+                                        text = if (myRating == null) "Rate this Recipe" else "Your Rating",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        for (i in 1..5) {
+                                            IconButton(
+                                                onClick = { userRating = i },
+                                                modifier = Modifier.size(36.dp)
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.ic_ai_stars),
+                                                    contentDescription = "$i Stars",
+                                                    tint = if (i <= userRating) Color(0xFFFFB300) else Color.LightGray,
+                                                    modifier = Modifier.size(32.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    OutlinedTextField(
+                                        value = reviewText,
+                                        onValueChange = { reviewText = it },
+                                        label = { Text("Write a review (optional)") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        if (myRating != null) {
+                                            TextButton(
+                                                onClick = {
+                                                    viewModel.deleteRating(recipeId)
+                                                },
+                                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                            ) {
+                                                Text("Delete")
+                                            }
+                                        }
+                                        
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        
+                                        Button(
+                                            onClick = {
+                                                if (userRating > 0) {
+                                                    viewModel.rateRecipe(recipeId, userRating, reviewText.ifBlank { null })
+                                                }
+                                            },
+                                            enabled = userRating > 0,
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Text(if (myRating == null) "Submit" else "Update")
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -295,6 +466,28 @@ fun RecipeDetailsScreen(
                             painter = painterResource(R.drawable.arrow_back_icon),
                             contentDescription = "Back",
                             tint = Color.White
+                        )
+                    }
+
+                    IconButton(
+                        onClick = {
+                            currentRecipe.recipeId?.let { id ->
+                                if (isFavorite) {
+                                    viewModel.removeFavorite(id)
+                                } else {
+                                    viewModel.addFavorite(id)
+                                }
+                            }
+                        },
+                        modifier = Modifier.background(
+                            Color.Black.copy(alpha = 0.3f),
+                            CircleShape
+                        )
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_heart),
+                            contentDescription = "Favorite",
+                            tint = if (isFavorite) Color.Red else Color.White
                         )
                     }
                 }
@@ -375,6 +568,23 @@ fun InstructionsTab(instructions: String?) {
             text = instructions,
             style = MaterialTheme.typography.bodyLarge,
             lineHeight = 28.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun MacroItem(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
