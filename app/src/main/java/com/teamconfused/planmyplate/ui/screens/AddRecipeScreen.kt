@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,7 +37,10 @@ fun AddRecipeScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var activeSearchIndex by remember { mutableStateOf<Int?>(null) }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri ->
@@ -59,12 +64,15 @@ fun AddRecipeScreen(
                     }
                 }
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .navigationBarsPadding()
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -219,6 +227,7 @@ fun AddRecipeScreen(
                     ingredient = ingredient,
                     onUpdate = { viewModel.updateIngredient(index, it) },
                     onRemove = { viewModel.removeIngredient(index) },
+                    onSearchClick = { activeSearchIndex = index },
                     canRemove = uiState.ingredients.size > 1
                 )
             }
@@ -251,6 +260,29 @@ fun AddRecipeScreen(
             }
         }
     }
+
+    if (activeSearchIndex != null) {
+        IngredientSearchDialog(
+            searchResults = searchResults,
+            onSearchQueryChange = { viewModel.searchIngredients(it) },
+            onSelect = { selectedIng ->
+                activeSearchIndex?.let { index ->
+                    val currentIng = uiState.ingredients[index]
+                    viewModel.updateIngredient(
+                        index,
+                        currentIng.copy(
+                            ingId = selectedIng.ingId ?: 0,
+                            ingredientName = selectedIng.name
+                        )
+                    )
+                }
+                activeSearchIndex = null
+            },
+            onDismiss = {
+                activeSearchIndex = null
+            }
+        )
+    }
 }
 
 @Composable
@@ -258,6 +290,7 @@ fun IngredientInputCard(
     ingredient: RecipeIngredientInput,
     onUpdate: (RecipeIngredientInput) -> Unit,
     onRemove: () -> Unit,
+    onSearchClick: () -> Unit,
     canRemove: Boolean
 ) {
     Card(
@@ -283,14 +316,27 @@ fun IngredientInputCard(
                 }
             }
 
-            OutlinedTextField(
-                value = ingredient.ingredientName,
-                onValueChange = { onUpdate(ingredient.copy(ingredientName = it)) },
-                label = { Text("Ingredient Name") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("e.g., Tomato") }
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSearchClick() }
+            ) {
+                OutlinedTextField(
+                    value = if (ingredient.ingId > 0) ingredient.ingredientName else "",
+                    onValueChange = {},
+                    label = { Text("Ingredient Name *") },
+                    placeholder = { Text("Tap to search database...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    readOnly = true,
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = if (ingredient.ingId > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -315,10 +361,99 @@ fun IngredientInputCard(
             }
 
             Text(
-                "Note: Ingredient ID lookup not yet implemented. Enter manually if needed.",
+                text = "Custom recipe ingredients are restricted to verified database ingredients.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
+}
+
+@Composable
+fun IngredientSearchDialog(
+    searchResults: List<com.teamconfused.planmyplate.data.model.IngredientDto>,
+    onSearchQueryChange: (String) -> Unit,
+    onSelect: (com.teamconfused.planmyplate.data.model.IngredientDto) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    
+    LaunchedEffect(query) {
+        onSearchQueryChange(query)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Search Verified Ingredient") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 300.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    label = { Text("Type ingredient name...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (searchResults.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (query.isBlank()) "Type to start searching" else "No matching ingredients found",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(searchResults) { ingredient ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onSelect(ingredient) },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = ingredient.name,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

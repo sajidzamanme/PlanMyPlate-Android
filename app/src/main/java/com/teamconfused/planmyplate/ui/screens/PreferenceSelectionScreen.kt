@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,7 +28,9 @@ fun PreferenceSelectionScreen(
     onDietSelected: (String) -> Unit,
     onAllergyToggled: (String) -> Unit,
     onDislikeToggled: (String) -> Unit,
-    onServingsSelected: (Int) -> Unit,
+    onGenderSelected: (String?) -> Unit,
+    onHeightChanged: (String) -> Unit,
+    onWeightChanged: (String) -> Unit,
     onBudgetSelected: (Float) -> Unit,
     onNextStep: () -> Unit,
     onBackClick: () -> Unit
@@ -41,7 +44,9 @@ fun PreferenceSelectionScreen(
             )
         },
         bottomBar = {
-            Column {
+            Column(
+                modifier = Modifier.navigationBarsPadding()
+            ) {
                 if (uiState.errorMessage != null) {
                     Text(
                         text = uiState.errorMessage,
@@ -78,14 +83,19 @@ fun PreferenceSelectionScreen(
                 }
             }
         },
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
+        val scrollState = rememberScrollState()
+        LaunchedEffect(uiState.currentStep) {
+            scrollState.scrollTo(0)
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -115,9 +125,13 @@ fun PreferenceSelectionScreen(
                     selectedOptions = uiState.selectedDislikes,
                     onOptionToggled = onDislikeToggled
                 )
-                3 -> ServingsSelectionStep(
-                    selectedServings = uiState.selectedServings,
-                    onServingsSelected = onServingsSelected
+                3 -> PhysicalInfoStep(
+                    selectedGender = uiState.selectedGender,
+                    onGenderSelected = onGenderSelected,
+                    height = uiState.selectedHeight,
+                    onHeightChanged = onHeightChanged,
+                    weight = uiState.selectedWeight,
+                    onWeightChanged = onWeightChanged
                 )
                 4 -> BudgetSelectionStep(
                     selectedBudget = uiState.selectedBudget,
@@ -215,24 +229,77 @@ fun MultiSelectStep(
 }
 
 @Composable
-fun ServingsSelectionStep(
-    selectedServings: Int?,
-    onServingsSelected: (Int) -> Unit
+fun GenderSelectionStep(
+    selectedGender: String?,
+    onGenderSelected: (String?) -> Unit
 ) {
-    val servingOptions = listOf(
-        ServingOption(2, "for two, or one with leftovers"),
-        ServingOption(4, "for four, or two-three with leftovers"),
-        ServingOption(6, "for a family of 5+")
-    )
-
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        servingOptions.forEach { option ->
-            ServingCard(
-                option = option,
-                isSelected = option.count == selectedServings,
-                onClick = { onServingsSelected(option.count) }
+    val options = listOf("male", "female", "other")
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        options.forEach { gender ->
+            SelectionButton(
+                text = gender.replaceFirstChar { it.uppercase() },
+                isSelected = gender == selectedGender,
+                onClick = { onGenderSelected(gender) }
             )
         }
+    }
+}
+
+@Composable
+fun HeightInputStep(
+    height: String,
+    onHeightChanged: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Enter your height (optional)",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedTextField(
+            value = height,
+            onValueChange = onHeightChanged,
+            label = { Text("Height (cm)") },
+            placeholder = { Text("e.g. 175") },
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+            ),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large
+        )
+    }
+}
+
+@Composable
+fun WeightInputStep(
+    weight: String,
+    onWeightChanged: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Enter your weight (optional)",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedTextField(
+            value = weight,
+            onValueChange = onWeightChanged,
+            label = { Text("Weight (kg)") },
+            placeholder = { Text("e.g. 70") },
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+            ),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large
+        )
     }
 }
 
@@ -322,12 +389,16 @@ fun PreferenceSelection_BudgetStep_Preview() {
                 selectedDiet = "Classic",
                 selectedAllergies = emptySet(),
                 selectedDislikes = emptySet(),
-                selectedServings = 2
+                selectedHeight = "175",
+                selectedWeight = "70",
+                selectedGender = "male"
             ),
             onDietSelected = {},
             onAllergyToggled = {},
             onDislikeToggled = {},
-            onServingsSelected = {},
+            onGenderSelected = {},
+            onHeightChanged = {},
+            onWeightChanged = {},
             onBudgetSelected = {},
             onNextStep = {},
             onBackClick = {}
@@ -391,35 +462,102 @@ fun SelectionChip(
 }
 
 @Composable
-fun ServingCard(
-    option: ServingOption,
-    isSelected: Boolean,
-    onClick: () -> Unit
+fun PhysicalInfoStep(
+    selectedGender: String?,
+    onGenderSelected: (String?) -> Unit,
+    height: String,
+    onHeightChanged: (String) -> Unit,
+    weight: String,
+    onWeightChanged: (String) -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        border = if (!isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else BorderStroke(1.6.dp, MaterialTheme.colorScheme.primary),
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth()
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "Gender",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val genders = listOf("male", "female", "other")
+                genders.forEach { gender ->
+                    val isSelected = gender == selectedGender
+                    Surface(
+                        onClick = { onGenderSelected(gender) },
+                        shape = RoundedCornerShape(12.dp),
+                        border = if (!isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = gender.replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "${option.count} servings",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Height (optional)",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = option.description,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
+                OutlinedTextField(
+                    value = height,
+                    onValueChange = onHeightChanged,
+                    placeholder = { Text("cm") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large
                 )
-            )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Weight (optional)",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                OutlinedTextField(
+                    value = weight,
+                    onValueChange = onWeightChanged,
+                    placeholder = { Text("kg") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large
+                )
+            }
         }
     }
 }
@@ -429,13 +567,8 @@ private fun getTitleForStep(step: Int): String {
         0 -> "Pick your diet"
         1 -> "Any allergies?"
         2 -> "How about dislikes?"
-        3 -> "How many servings per meal?"
+        3 -> "Physical Details"
         4 -> "Daily Budget?"
         else -> ""
     }
 }
-
-// Hardcoded lists removed - data comes from API via ViewModel
-
-
-data class ServingOption(val count: Int, val description: String)

@@ -18,12 +18,15 @@ import com.teamconfused.planmyplate.ui.navigation.BottomNavItem
 import com.teamconfused.planmyplate.ui.navigation.Screen
 
 @Composable
-fun BottomNavigationBar(navController: NavController) {
+fun BottomNavigationBar(
+    navController: NavController,
+    onMoreClick: () -> Unit
+) {
     val items = listOf(
         BottomNavItem("Home", R.drawable.home_icon, Screen.Home),
         BottomNavItem("Meal Plan", R.drawable.list_icon, Screen.MealPlan),
         BottomNavItem("Groceries", R.drawable.shopping_icon, Screen.Groceries),
-        BottomNavItem("Settings", R.drawable.settings_icon, Screen.Settings)
+        BottomNavItem("More", R.drawable.ic_more, Screen.Settings)
     )
 
     // Build a set of qualified route names for matching
@@ -37,9 +40,14 @@ fun BottomNavigationBar(navController: NavController) {
         val currentRoute = navBackStackEntry?.destination?.route
 
         items.forEach { item ->
-            val isSelected = currentRoute?.contains(
-                item.screen::class.qualifiedName ?: ""
-            ) == true
+            val isSelected = if (item.label == "More") {
+                currentRoute?.contains(Screen.Settings::class.qualifiedName ?: "") == true ||
+                currentRoute?.contains(Screen.Favorites::class.qualifiedName ?: "") == true
+            } else {
+                currentRoute?.contains(
+                    item.screen::class.qualifiedName ?: ""
+                ) == true
+            }
 
             NavigationBarItem(
                 icon = {
@@ -64,7 +72,9 @@ fun BottomNavigationBar(navController: NavController) {
                 },
                 selected = isSelected,
                 onClick = {
-                    if (!isSelected) {
+                    if (item.label == "More") {
+                        onMoreClick()
+                    } else if (!isSelected) {
                         navController.navigate(item.screen) {
                             popUpTo(navController.graph.findStartDestination().id) {
                                 saveState = true

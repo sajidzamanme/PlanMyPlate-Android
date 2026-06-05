@@ -89,8 +89,8 @@ class LoginViewModel(
                             // Save preferences locally
                             sessionManager.saveUserPreferences(prefs)
                             
-                            // Basic check: if diet or servings are set, we assume preferences exist
-                            hasPreferences = prefs.diet != null || prefs.servings != null
+                            // Basic check: if diet or budget are set, we assume preferences exist
+                            hasPreferences = prefs.prefId != null || prefs.diet != null || prefs.budget != null
                         } catch (e: Exception) {
                             Log.e("LoginViewModel", "Failed to fetch user preferences: ${e.message}", e)
                             // If it fails (e.g. 404), assume preferences are not set
@@ -113,5 +113,9 @@ class LoginViewModel(
                 }
             }
         }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 }

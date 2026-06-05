@@ -2,6 +2,13 @@ package com.teamconfused.planmyplate.ui.screens
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,7 +73,8 @@ fun ForgotPasswordScreen(
     onVerifyCodeClick: () -> Unit,
     onResetPasswordClick: () -> Unit,
     onLoginClick: () -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onDismissError: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -85,13 +93,17 @@ fun ForgotPasswordScreen(
                 )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 24.dp)
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             when (uiState.step) {
                 ForgotPasswordStep.EMAIL_INPUT -> {
@@ -131,6 +143,19 @@ fun ForgotPasswordScreen(
                 }
             }
         }
+    }
+
+    if (uiState.errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = onDismissError,
+            title = { Text("Error") },
+            text = { Text(uiState.errorMessage) },
+            confirmButton = {
+                TextButton(onClick = onDismissError) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }
 

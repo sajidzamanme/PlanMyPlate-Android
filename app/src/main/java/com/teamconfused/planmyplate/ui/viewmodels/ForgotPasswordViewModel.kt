@@ -26,6 +26,7 @@ data class ForgotPasswordUiState(
     val newPassword: String = "",
     val confirmPassword: String = "",
     val error: String? = null,
+    val errorMessage: String? = null,
     val isLoading: Boolean = false,
     val resetToken: String? = null
 )
@@ -81,7 +82,7 @@ class ForgotPasswordViewModel(
                 Log.e("ForgotPasswordViewModel", "Failed to send reset code: ${e.message}", e)
                 _uiState.update { 
                     it.copy(
-                        error = e.localizedMessage ?: "Failed to send reset code",
+                        errorMessage = e.localizedMessage ?: "Failed to send reset code",
                         isLoading = false
                     ) 
                 }
@@ -133,11 +134,15 @@ class ForgotPasswordViewModel(
                 Log.e("ForgotPasswordViewModel", "Failed to reset password: ${e.message}", e)
                 _uiState.update { 
                     it.copy(
-                        error = e.localizedMessage ?: "Failed to reset password",
+                        errorMessage = e.localizedMessage ?: "Failed to reset password",
                         isLoading = false
                     ) 
                 }
             }
         }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 }

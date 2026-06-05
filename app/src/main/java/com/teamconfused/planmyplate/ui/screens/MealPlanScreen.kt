@@ -71,36 +71,42 @@ fun MealPlanScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    Scaffold(contentWindowInsets = WindowInsets(0)) { padding ->
-        if (uiState.activeMealPlan != null && !uiState.isCreatingPlan) {
-            WeeklyMealPlanView(
-                mealPlan         = uiState.activeMealPlan!!,
-                additionalMeals  = uiState.additionalMeals,
-                handledMeals     = uiState.handledMeals,
-                modifier         = Modifier.padding(padding),
-                onCreateNew      = { viewModel.startNewPlan() },
-                onRecipeClick    = { id ->
-                    onNavigateToRecipeDetails(id)
-                },
-            )
-        } else {
-            CreateMealPlanContent(
-                uiState          = uiState,
-                onGenerateAi     = {
-                    viewModel.generateMealPlan {
-                        onNavigateToHome()
-                    }
-                },
-                onUseSelections  = {
-                    viewModel.createMealPlan {
-                        onNavigateToHome()
-                    }
-                },
-                onMealTypeClick  = { type ->
-                    onNavigateToRecipeSelection(type)
-                },
-                padding          = padding,
-            )
+    Scaffold(contentWindowInsets = WindowInsets(0)) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
+            if (uiState.activeMealPlan != null && !uiState.isCreatingPlan) {
+                WeeklyMealPlanView(
+                    mealPlan         = uiState.activeMealPlan!!,
+                    additionalMeals  = uiState.additionalMeals,
+                    handledMeals     = uiState.handledMeals,
+                    modifier         = Modifier.padding(paddingValues),
+                    onCreateNew      = { viewModel.startNewPlan() },
+                    onRecipeClick    = { id ->
+                        onNavigateToRecipeDetails(id)
+                    },
+                )
+            } else {
+                CreateMealPlanContent(
+                    uiState          = uiState,
+                    onGenerateAi     = {
+                        viewModel.generateMealPlan {
+                            onNavigateToHome()
+                        }
+                    },
+                    onUseSelections  = {
+                        viewModel.createMealPlan {
+                            onNavigateToHome()
+                        }
+                    },
+                    onMealTypeClick  = { type ->
+                        onNavigateToRecipeSelection(type)
+                    },
+                    padding          = paddingValues,
+                )
+            }
         }
     }
 }
