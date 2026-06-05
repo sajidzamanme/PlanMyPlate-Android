@@ -5,16 +5,20 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class RecipeResponse(
-    @SerialName("recipe_id") val recipeId: Int? = null,
+    @SerialName("recipeId") val recipeId: Int? = null,
     val name: String,
     val description: String? = null,
     val calories: Int? = null,
-    @SerialName("prep_time") val prepTime: Int? = null,
-    @SerialName("cook_time") val cookTime: Int? = null,
+    val protein: Double? = null,
+    val carbs: Double? = null,
+    val fat: Double? = null,
+    val fiber: Double? = null,
+    @SerialName("prepTime") val prepTime: Int? = null,
+    @SerialName("cookTime") val cookTime: Int? = null,
     val servings: Int? = null,
     val instructions: String? = null,
-    @SerialName("recipe_ingredients") val recipeIngredients: List<RecipeIngredientResponse>? = null,
-    @SerialName("image_url") val imageUrl: String? = null
+    @SerialName("recipeIngredients") val recipeIngredients: List<RecipeIngredientResponse>? = null,
+    @SerialName("imageUrl") val imageUrl: String? = null
 )
 
 @Serializable
@@ -30,17 +34,21 @@ data class CreateRecipeRequest(
     val name: String,
     val description: String? = null,
     val calories: Int? = null,
-    @SerialName("prep_time") val prepTime: Int? = null,
-    @SerialName("cook_time") val cookTime: Int? = null,
+    val protein: Double? = null,
+    val carbs: Double? = null,
+    val fat: Double? = null,
+    val fiber: Double? = null,
+    @SerialName("prepTime") val prepTime: Int? = null,
+    @SerialName("cookTime") val cookTime: Int? = null,
     val servings: Int? = null,
     val instructions: String? = null,
-    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("imageUrl") val imageUrl: String? = null,
     val ingredients: List<RecipeIngredientRequest>? = null
 )
 
 @Serializable
 data class RecipeIngredientRequest(
-    @SerialName("ing_id") val ingId: Int,
+    @SerialName("ingId") val ingId: Int,
     val quantity: Int,
     val unit: String
 )
@@ -53,20 +61,20 @@ data class ImageUploadResponse(
 
 @Serializable
 data class GenerateRecipeRequest(
-    @SerialName("available_ingredients") val availableIngredients: List<String> = emptyList(),
-    @SerialName("max_calories") val maxCalories: Int? = null,
-    @SerialName("cuisine_type") val cuisineType: String? = null,
+    @SerialName("availableIngredients") val availableIngredients: List<String> = emptyList(),
+    @SerialName("maxCalories") val maxCalories: Int? = null,
+    @SerialName("cuisineType") val cuisineType: String? = null,
     val allergies: List<String> = emptyList(),
-    @SerialName("dietary_preference") val dietaryPreference: String? = null,
+    @SerialName("dietaryPreference") val dietaryPreference: String? = null,
     val mood: String? = null,
     val servings: Int = 2,
-    @SerialName("max_cooking_time") val maxCookingTime: Int? = null
+    @SerialName("maxCookingTime") val maxCookingTime: Int? = null
 )
 
 @Serializable
 data class AdditionalMeal(
-    @SerialName("recipe_id") val recipeId: Int,
+    @SerialName("recipeId") val recipeId: Int,
     val recipe: RecipeResponse,
     val date: String,
-    @SerialName("meal_type") val mealType: String
+    @SerialName("mealType") val mealType: String
 )

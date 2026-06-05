@@ -27,10 +27,4 @@ interface UserPreferencesService {
 
     @GET("api/reference-data/diets")
     suspend fun getDiets(): List<DietDto>
-
-    @GET("api/reference-data/allergies")
-    suspend fun getAllergies(): List<AllergyDto>
-
-    @GET("api/reference-data/dislikes")
-    suspend fun getDislikes(): List<IngredientDto>
 }
