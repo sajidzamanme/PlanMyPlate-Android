@@ -8,6 +8,7 @@ import com.teamconfused.planmyplate.data.model.PurchaseItemsRequest
 import com.teamconfused.planmyplate.domain.model.GroceryList
 import com.teamconfused.planmyplate.domain.model.GroceryListItem
 import com.teamconfused.planmyplate.domain.repository.GroceryRepository
+import com.teamconfused.planmyplate.util.NetworkUtils
 import com.teamconfused.planmyplate.util.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -63,7 +64,7 @@ class GroceryViewModel(
                 }
             } catch (e: Exception) {
                 Log.e("GroceryViewModel", "Failed to fetch grocery lists: ${e.message}", e)
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _uiState.update { it.copy(isLoading = false, errorMessage = NetworkUtils.parseError(e)) }
             }
         }
     }
@@ -182,7 +183,7 @@ class GroceryViewModel(
                 onSuccess()
             } catch (e: Exception) {
                 Log.e("GroceryViewModel", "Failed to purchase selected items: ${e.message}", e)
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _uiState.update { it.copy(isLoading = false, errorMessage = NetworkUtils.parseError(e)) }
             }
         }
     }

@@ -112,7 +112,7 @@ fun PreferenceSelectionScreen(
             when (uiState.currentStep) {
                 0 -> DietSelectionStep(
                     availableDiets = uiState.availableDiets,
-                    selectedDiet = uiState.selectedDiet,
+                    selectedDiets = uiState.selectedDiets,
                     onDietSelected = onDietSelected
                 )
                 1 -> MultiSelectStep(
@@ -190,16 +190,14 @@ fun PreferenceTopBar(
 @Composable
 fun DietSelectionStep(
     availableDiets: List<String>,
-    selectedDiet: String?,
+    selectedDiets: Set<String>,
     onDietSelected: (String) -> Unit
 ) {
-    // diets list removed, using availableDiets parameter
-
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         availableDiets.forEach { diet ->
             SelectionButton(
                 text = diet,
-                isSelected = diet == selectedDiet,
+                isSelected = selectedDiets.contains(diet),
                 onClick = { onDietSelected(diet) }
             )
         }
@@ -386,7 +384,7 @@ fun PreferenceSelection_BudgetStep_Preview() {
                 currentStep = 4,
                 availableDiets = listOf("Classic", "Vegetarian"),
                 availableIngredients = listOf("Peanuts", "Shellfish", "Mushrooms"),
-                selectedDiet = "Classic",
+                selectedDiets = setOf("Classic"),
                 selectedAllergies = emptySet(),
                 selectedDislikes = emptySet(),
                 selectedHeight = "175",

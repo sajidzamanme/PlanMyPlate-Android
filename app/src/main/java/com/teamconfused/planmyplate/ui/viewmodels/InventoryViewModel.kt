@@ -7,6 +7,7 @@ import com.teamconfused.planmyplate.data.model.InventoryItemRequest
 import com.teamconfused.planmyplate.domain.model.Inventory
 import com.teamconfused.planmyplate.domain.model.InventoryItem
 import com.teamconfused.planmyplate.domain.repository.InventoryRepository
+import com.teamconfused.planmyplate.util.NetworkUtils
 import com.teamconfused.planmyplate.util.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -76,7 +77,7 @@ class InventoryViewModel(
                 }
             } catch (e: Exception) {
                 Log.e("InventoryViewModel", "Failed to fetch inventory: ${e.message}", e)
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _uiState.update { it.copy(isLoading = false, errorMessage = NetworkUtils.parseError(e)) }
             }
         }
     }

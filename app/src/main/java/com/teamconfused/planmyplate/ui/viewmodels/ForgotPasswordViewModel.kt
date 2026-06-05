@@ -82,7 +82,7 @@ class ForgotPasswordViewModel(
                 Log.e("ForgotPasswordViewModel", "Failed to send reset code: ${e.message}", e)
                 _uiState.update { 
                     it.copy(
-                        errorMessage = e.localizedMessage ?: "Failed to send reset code",
+                        errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e),
                         isLoading = false
                     ) 
                 }
@@ -134,7 +134,7 @@ class ForgotPasswordViewModel(
                 Log.e("ForgotPasswordViewModel", "Failed to reset password: ${e.message}", e)
                 _uiState.update { 
                     it.copy(
-                        errorMessage = e.localizedMessage ?: "Failed to reset password",
+                        errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e),
                         isLoading = false
                     ) 
                 }

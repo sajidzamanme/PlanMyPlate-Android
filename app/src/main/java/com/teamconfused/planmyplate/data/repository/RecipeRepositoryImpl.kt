@@ -82,4 +82,13 @@ class RecipeRepositoryImpl(
             throw e
         }
     }
+
+    override suspend fun cookRecipe(token: String, id: Int, servings: Float?, force: Boolean?): Map<String, String> {
+        return try {
+            api.cookRecipe(token, id, servings, force)
+        } catch (e: Exception) {
+            Log.e("RecipeRepositoryImpl", "cookRecipe failed: ${e.message}", e)
+            throw e
+        }
+    }
 }

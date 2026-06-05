@@ -67,4 +67,12 @@ interface RecipeService {
         @Query("minCalories") minCalories: Int,
         @Query("maxCalories") maxCalories: Int
     ): List<RecipeResponse>
+
+    @POST("api/recipes/{id}/cook")
+    suspend fun cookRecipe(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Query("servings") servings: Float? = null,
+        @Query("force") force: Boolean? = null
+    ): Map<String, String>
 }

@@ -97,9 +97,9 @@ class MealPlanViewModel(
                 _budgetRecipesState.value = RecipeUiState.Success(filterRecipesUseCase.byCalories(authHeader, 0, 400))
             } catch (e: Exception) {
                 Log.e("MealPlanViewModel", "Failed to load recipes: ${e.message}", e)
-                _allRecipesState.value = RecipeUiState.Error(e.message ?: "Failed to load recipes")
-                _recommendedRecipesState.value = RecipeUiState.Error(e.message ?: "Failed to load recommended recipes")
-                _budgetRecipesState.value = RecipeUiState.Error(e.message ?: "Failed to load budget recipes")
+                _allRecipesState.value = RecipeUiState.Error(com.teamconfused.planmyplate.util.NetworkUtils.parseError(e))
+                _recommendedRecipesState.value = RecipeUiState.Error(com.teamconfused.planmyplate.util.NetworkUtils.parseError(e))
+                _budgetRecipesState.value = RecipeUiState.Error(com.teamconfused.planmyplate.util.NetworkUtils.parseError(e))
             }
         }
     }
@@ -216,7 +216,7 @@ class MealPlanViewModel(
                 onSuccess()
             } catch (e: Exception) {
                 Log.e("MealPlanViewModel", "Failed to create meal plan: ${e.message}", e)
-                _uiState.update { it.copy(errorMessage = e.message ?: "Failed to create meal plan") }
+                _uiState.update { it.copy(errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e)) }
             } finally {
                 _uiState.update { it.copy(isCreatingPlan = false) }
             }
@@ -305,7 +305,7 @@ class MealPlanViewModel(
             } catch (e: Exception) {
                 Log.e("MealPlanViewModel", "Failed to generate meal plan: ${e.message}", e)
                 _uiState.update { 
-                    it.copy(errorMessage = e.message ?: "Failed to generate meal plan") 
+                    it.copy(errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e)) 
                 }
             } finally {
                 _uiState.update { it.copy(isCreatingPlan = false) }

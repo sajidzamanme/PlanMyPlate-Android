@@ -27,7 +27,7 @@ class SessionManager(context: Context) {
     }
 
     fun isLoggedIn(): Boolean {
-        return getUserId() != -1
+        return getUserId() != -1 && getAuthToken() != null
     }
     
     fun setHasMealPlans(hasMealPlans: Boolean) {

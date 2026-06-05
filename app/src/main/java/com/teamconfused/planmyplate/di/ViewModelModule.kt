@@ -9,13 +9,13 @@ val viewModelModule = module {
     viewModel { SignupViewModel(get(), get(), get()) }
     viewModel { ForgotPasswordViewModel(get()) }
     viewModel { PreferenceSelectionViewModel(get(), get(), get()) }
-    viewModel { HomeViewModel(get(), get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get(), get()) }
     viewModel { MealPlanViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { SettingsViewModel(get()) }
     viewModel { ProfileViewModel(get(), get(), get()) }
     viewModel { EditProfileViewModel(get(), get()) }
     viewModel { AddRecipeViewModel(get(), get(), get()) }
-    viewModel { RecipeViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { RecipeViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { GroceryViewModel(get(), get()) }
     viewModel { InventoryViewModel(get(), get(), get()) }
     viewModel { ExpiryViewModel(get(), get()) }

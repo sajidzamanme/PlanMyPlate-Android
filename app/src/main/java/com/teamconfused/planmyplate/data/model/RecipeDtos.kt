@@ -78,3 +78,20 @@ data class AdditionalMeal(
     val date: String,
     @SerialName("mealType") val mealType: String
 )
+
+@Serializable
+data class CookRecipeErrorResponse(
+    val status: String,
+    val title: String,
+    val message: String,
+    val missing: List<MissingIngredientDto> = emptyList()
+)
+
+@Serializable
+data class MissingIngredientDto(
+    @SerialName("ingId") val ingId: Int,
+    val name: String,
+    val required: Double,
+    val available: Double,
+    val unit: String
+)

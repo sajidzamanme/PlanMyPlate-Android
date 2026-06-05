@@ -80,7 +80,7 @@ fun AppNavGraph(navController: NavHostController) {
     val sessionManager: SessionManager = koinInject()
     val startDestination: Screen = if (sessionManager.isLoggedIn()) {
         val prefs = sessionManager.getUserPreferences()
-        val hasPreferences = prefs.prefId != null || prefs.diet != null || prefs.budget != null
+        val hasPreferences = prefs.prefId != null || !prefs.diets.isNullOrEmpty() || prefs.budget != null
         if (hasPreferences) Screen.Home else Screen.PreferenceSelection
     } else {
         Screen.Welcome
@@ -446,6 +446,11 @@ fun AppNavGraph(navController: NavHostController) {
                     },
                     onLogoutClick = {
                         profileViewModel.logout()
+                        navController.navigate(Screen.Welcome) {
+                            popUpTo(navController.graph.id) { inclusive = true }
+                        }
+                    },
+                    onDeleteAccountClick = {
                         navController.navigate(Screen.Welcome) {
                             popUpTo(navController.graph.id) { inclusive = true }
                         }

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.teamconfused.planmyplate.data.model.UpdateUserRequest
 import com.teamconfused.planmyplate.data.model.UserDto
 import com.teamconfused.planmyplate.network.UserService
+import com.teamconfused.planmyplate.util.NetworkUtils
 import com.teamconfused.planmyplate.util.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,7 +67,7 @@ class EditProfileViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = e.localizedMessage ?: "Failed to load user info"
+                        error = NetworkUtils.parseError(e)
                     )
                 }
             }
@@ -136,7 +137,7 @@ class EditProfileViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = e.localizedMessage ?: "Failed to update user profile"
+                        error = NetworkUtils.parseError(e)
                     )
                 }
             }

@@ -7,6 +7,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -18,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.teamconfused.planmyplate.domain.model.Recipe
 import com.teamconfused.planmyplate.ui.components.HorizontalRecipeCard
@@ -116,6 +119,9 @@ fun HomeScreen(
 
     if (showGenerateDialog) {
         RecipeGenerationDialog(
+            pantryIngredients = uiState.pantryIngredients,
+            searchResults = uiState.searchResults,
+            onSearchQueryChange = { viewModel.searchIngredients(it) },
             onDismiss = { showGenerateDialog = false },
             onGenerate = { ingredients, mood ->
                 val type = "Dinner" 
@@ -167,31 +173,158 @@ fun HomeScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RecipeGenerationDialog(
+    pantryIngredients: List<String>,
+    searchResults: List<com.teamconfused.planmyplate.data.model.IngredientDto>,
+    onSearchQueryChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onGenerate: (List<String>, String) -> Unit
 ) {
-    var ingredientsText by remember { mutableStateOf("") }
+    var usePantry by remember { mutableStateOf(true) }
+    var manualIngredients by remember { mutableStateOf(emptyList<String>()) }
     var moodText by remember { mutableStateOf("") }
+    var showSearchDialog by remember { mutableStateOf(false) }
+
+    if (showSearchDialog) {
+        IngredientSearchDialog(
+            searchResults = searchResults,
+            onSearchQueryChange = onSearchQueryChange,
+            onSelect = { selectedIng ->
+                if (!manualIngredients.contains(selectedIng.name)) {
+                    manualIngredients = manualIngredients + selectedIng.name
+                }
+                showSearchDialog = false
+            },
+            onDismiss = {
+                showSearchDialog = false
+            }
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Generate Recipe with AI") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(
-                    value = ingredientsText,
-                    onValueChange = { ingredientsText = it },
-                    label = { Text("Available Ingredients (comma separated)") },
-                    placeholder = { Text("e.g. chicken, rice, tomato") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // Toggle switch
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { usePantry = !usePantry }
+                        .padding(vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "Use my pantry inventory",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Switch(
+                        checked = usePantry,
+                        onCheckedChange = { usePantry = it }
+                    )
+                }
+
+                if (usePantry) {
+                    Text(
+                        text = "Ingredients from your pantry will be used:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (pantryIngredients.isEmpty()) {
+                        Text(
+                            text = "Your pantry is empty! Please add ingredients in the inventory tab or choose manual selection.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    } else {
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 150.dp)
+                                .verticalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            pantryIngredients.forEach { ingName ->
+                                SuggestionChip(
+                                    onClick = {},
+                                    label = { Text(ingName) }
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Selected Ingredients:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            TextButton(onClick = { showSearchDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Add Ingredient",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Add")
+                            }
+                        }
+
+                        if (manualIngredients.isEmpty()) {
+                            Text(
+                                text = "No ingredients selected yet. Tap Add to search and choose ingredients.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        } else {
+                            FlowRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 150.dp)
+                                    .verticalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                manualIngredients.forEach { ingName ->
+                                    InputChip(
+                                        selected = true,
+                                        onClick = {},
+                                        label = { Text(ingName) },
+                                        trailingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Remove",
+                                                modifier = Modifier
+                                                    .size(16.dp)
+                                                    .clickable {
+                                                        manualIngredients = manualIngredients - ingName
+                                                    }
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = moodText,
                     onValueChange = { moodText = it },
-                    label = { Text("Mood / Occasion") },
-                    placeholder = { Text("e.g. Quick Dinner, Romantic") },
+                    label = { Text("Describe recipe type (optional)") },
+                    placeholder = { Text("e.g. Quick Dinner, Comfort Food, Sweet Dessert") },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -199,9 +332,10 @@ fun RecipeGenerationDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val ingredients = ingredientsText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    val ingredients = if (usePantry) pantryIngredients else manualIngredients
                     onGenerate(ingredients, moodText)
-                }
+                },
+                enabled = if (usePantry) pantryIngredients.isNotEmpty() else manualIngredients.isNotEmpty()
             ) {
                 Text("Generate")
             }

@@ -10,9 +10,11 @@ import com.teamconfused.planmyplate.domain.model.RecipeRatingSummary
 import com.teamconfused.planmyplate.domain.model.UserFavorite
 import com.teamconfused.planmyplate.domain.repository.FavoriteRepository
 import com.teamconfused.planmyplate.domain.repository.RatingRepository
+import com.teamconfused.planmyplate.domain.repository.RecipeRepository
 import com.teamconfused.planmyplate.domain.usecase.FilterRecipesUseCase
 import com.teamconfused.planmyplate.domain.usecase.GetAllRecipesUseCase
 import com.teamconfused.planmyplate.domain.usecase.GetRecipeUseCase
+import com.teamconfused.planmyplate.util.NetworkUtils
 import com.teamconfused.planmyplate.util.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,14 +27,31 @@ sealed class RecipeUiState {
     data class Error(val message: String) : RecipeUiState()
 }
 
+sealed class CookRecipeUiState {
+    object Idle : CookRecipeUiState()
+    object Loading : CookRecipeUiState()
+    object Success : CookRecipeUiState()
+    data class InsufficientIngredients(
+        val title: String,
+        val message: String,
+        val missing: List<com.teamconfused.planmyplate.data.model.MissingIngredientDto>
+    ) : CookRecipeUiState()
+    data class Error(val message: String) : CookRecipeUiState()
+}
+
 class RecipeViewModel(
     private val getAllRecipesUseCase: GetAllRecipesUseCase,
     private val filterRecipesUseCase: FilterRecipesUseCase,
     private val getRecipeUseCase: GetRecipeUseCase,
     private val favoriteRepository: FavoriteRepository,
     private val ratingRepository: RatingRepository,
+    private val recipeRepository: RecipeRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
+
+    private val json = kotlinx.serialization.json.Json {
+        ignoreUnknownKeys = true
+    }
 
     private val _allRecipesState = MutableStateFlow<RecipeUiState>(RecipeUiState.Loading)
     val allRecipesState: StateFlow<RecipeUiState> = _allRecipesState.asStateFlow()
@@ -75,7 +94,7 @@ class RecipeViewModel(
                 _allRecipesState.value = RecipeUiState.Success(recipes)
             } catch (e: Exception) {
                 Log.e("RecipeViewModel", "Failed to fetch recipes: ${e.message}", e)
-                _allRecipesState.value = RecipeUiState.Error(e.message ?: "Failed to fetch recipes")
+                _allRecipesState.value = RecipeUiState.Error(NetworkUtils.parseError(e))
             }
         }
     }
@@ -90,7 +109,7 @@ class RecipeViewModel(
                 _recommendedRecipesState.value = RecipeUiState.Success(all.shuffled().take(5))
             } catch (e: Exception) {
                 Log.e("RecipeViewModel", "Failed to fetch recommended recipes: ${e.message}", e)
-                 _recommendedRecipesState.value = RecipeUiState.Error(e.message ?: "Failed")
+                 _recommendedRecipesState.value = RecipeUiState.Error(NetworkUtils.parseError(e))
             }
         }
     }
@@ -105,7 +124,7 @@ class RecipeViewModel(
                 _budgetRecipesState.value = RecipeUiState.Success(budget)
             } catch (e: Exception) {
                 Log.e("RecipeViewModel", "Failed to fetch budget recipes: ${e.message}", e)
-                 _budgetRecipesState.value = RecipeUiState.Error(e.message ?: "Failed")
+                 _budgetRecipesState.value = RecipeUiState.Error(NetworkUtils.parseError(e))
             }
         }
     }
@@ -244,6 +263,50 @@ class RecipeViewModel(
                 fetchRatingSummary(recipeId)
             } catch (e: Exception) {
                 Log.e("RecipeViewModel", "Failed to delete rating: ${e.message}", e)
+            }
+        }
+    }
+
+    private val _cookRecipeState = MutableStateFlow<CookRecipeUiState>(CookRecipeUiState.Idle)
+    val cookRecipeState: StateFlow<CookRecipeUiState> = _cookRecipeState.asStateFlow()
+
+    fun resetCookRecipeState() {
+        _cookRecipeState.value = CookRecipeUiState.Idle
+    }
+
+    fun cookRecipe(recipeId: Int, servings: Float? = null, force: Boolean? = null) {
+        val token = sessionManager.getAuthToken() ?: return
+        val authHeader = "Bearer $token"
+        viewModelScope.launch {
+            _cookRecipeState.value = CookRecipeUiState.Loading
+            try {
+                recipeRepository.cookRecipe(authHeader, recipeId, servings, force)
+                _cookRecipeState.value = CookRecipeUiState.Success
+            } catch (e: retrofit2.HttpException) {
+                if (e.code() == 409) {
+                    try {
+                        val errorBody = e.response()?.errorBody()?.string()
+                        if (errorBody != null) {
+                            val errorResponse = json.decodeFromString(com.teamconfused.planmyplate.data.model.CookRecipeErrorResponse.serializer(), errorBody)
+                            
+                            if (errorResponse.status == "insufficient_ingredients") {
+                                _cookRecipeState.value = CookRecipeUiState.InsufficientIngredients(
+                                    title = errorResponse.title,
+                                    message = errorResponse.message,
+                                    missing = errorResponse.missing
+                                )
+                                return@launch
+                            }
+                        }
+                    } catch (ex: Exception) {
+                        Log.e("RecipeViewModel", "Failed to parse 409 error response", ex)
+                    }
+                }
+                Log.e("RecipeViewModel", "Failed to cook recipe: ${e.message}", e)
+                _cookRecipeState.value = CookRecipeUiState.Error(NetworkUtils.parseError(e))
+            } catch (e: Exception) {
+                Log.e("RecipeViewModel", "Failed to cook recipe: ${e.message}", e)
+                _cookRecipeState.value = CookRecipeUiState.Error(NetworkUtils.parseError(e))
             }
         }
     }

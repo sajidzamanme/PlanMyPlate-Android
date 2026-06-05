@@ -8,7 +8,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 
 object RetrofitClient {
-    private const val BASE_URL = "https://planmyplate-python-production.up.railway.app/" // 10.0.2.2 is localhost for Android Emulator
+    private const val BASE_URL = "https://planmyplate-python-production-4a10.up.railway.app" // 10.0.2.2 is localhost for Android Emulator
 
     private val json = Json {
         ignoreUnknownKeys = true

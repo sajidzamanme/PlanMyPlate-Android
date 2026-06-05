@@ -13,4 +13,5 @@ interface RecipeRepository {
     suspend fun searchRecipes(token: String, query: String): List<Recipe>
     suspend fun getRecipesByCalories(token: String, min: Int, max: Int): List<Recipe>
     suspend fun uploadImage(token: String, file: MultipartBody.Part): String
+    suspend fun cookRecipe(token: String, id: Int, servings: Float? = null, force: Boolean? = null): Map<String, String>
 }

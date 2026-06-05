@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.teamconfused.planmyplate.data.model.UserPreferencesRequest
 import com.teamconfused.planmyplate.domain.repository.UserPreferencesRepository
 import com.teamconfused.planmyplate.network.IngredientService
+import com.teamconfused.planmyplate.util.NetworkUtils
 import com.teamconfused.planmyplate.util.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +16,7 @@ import kotlinx.coroutines.launch
 
 data class PreferenceSelectionUiState(
     val currentStep: Int = 0,
-    val selectedDiet: String? = null,
+    val selectedDiets: Set<String> = emptySet(),
     val selectedAllergies: Set<String> = emptySet(),
     val selectedDislikes: Set<String> = emptySet(),
     val selectedBudget: Float = 50F,
@@ -61,7 +62,7 @@ class PreferenceSelectionViewModel(
                  _uiState.update { 
                     it.copy(
                         isLoading = false, 
-                        errorMessage = "Failed to load options: ${e.localizedMessage}"
+                        errorMessage = NetworkUtils.parseError(e)
                     ) 
                 }
             }
@@ -69,7 +70,14 @@ class PreferenceSelectionViewModel(
     }
 
     fun onDietSelected(diet: String) {
-        _uiState.update { it.copy(selectedDiet = diet) }
+        _uiState.update {
+            val current = it.selectedDiets
+            if (current.contains(diet)) {
+                it.copy(selectedDiets = current - diet)
+            } else {
+                it.copy(selectedDiets = current + diet)
+            }
+        }
     }
 
     fun onAllergyToggled(allergy: String) {
@@ -132,7 +140,7 @@ class PreferenceSelectionViewModel(
                 sessionManager.saveUserPreferences(response)
                 
                 _uiState.update { it.copy(
-                    selectedDiet = response.diet,
+                    selectedDiets = response.diets?.toSet() ?: emptySet(),
                     selectedAllergies = response.allergies?.toSet() ?: emptySet(),
                     selectedDislikes = response.dislikes?.toSet() ?: emptySet(),
                     selectedBudget = response.budget ?: 50f,
@@ -176,7 +184,7 @@ class PreferenceSelectionViewModel(
 
                 val request = UserPreferencesRequest(
                     userId = userId,
-                    diet = currentState.selectedDiet,
+                    diets = currentState.selectedDiets.toList(),
                     allergies = allergiesList,
                     dislikes = dislikesList,
                     budget = currentState.selectedBudget,
@@ -195,7 +203,7 @@ class PreferenceSelectionViewModel(
                 _uiState.update { 
                     it.copy(
                         isLoading = false, 
-                        errorMessage = e.localizedMessage ?: "Failed to save preferences"
+                        errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e)
                     ) 
                 }
             }
@@ -208,7 +216,7 @@ class PreferenceSelectionViewModel(
             val authHeader = "Bearer $token"
             val response = userPreferencesRepository.getPreferences(authHeader, id)
             // Check if the returned response has actual data.
-            response.prefId != null || response.diet != null || response.budget != null
+            response.prefId != null || !response.diets.isNullOrEmpty() || response.budget != null
         } catch (e: Exception) {
             Log.e("PreferenceSelectionViewModel", "Failed to check if preferences are set: ${e.message}", e)
             // If 404 is thrown, it usually means preferences don't exist

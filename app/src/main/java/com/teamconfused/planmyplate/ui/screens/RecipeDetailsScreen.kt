@@ -49,6 +49,125 @@ fun RecipeDetailsScreen(
     val myRating by viewModel.myRatingState.collectAsState()
     val ratingSummary by viewModel.ratingSummaryState.collectAsState()
 
+    val cookRecipeState by viewModel.cookRecipeState.collectAsState()
+
+    var showMissingIngredientsDialog by remember { mutableStateOf<com.teamconfused.planmyplate.ui.viewmodels.CookRecipeUiState.InsufficientIngredients?>(null) }
+    var showErrorDialog by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(cookRecipeState) {
+        when (cookRecipeState) {
+            is com.teamconfused.planmyplate.ui.viewmodels.CookRecipeUiState.Success -> {
+                onCooked(mealType, recipe?.calories ?: 0, recipe?.recipeId)
+                viewModel.resetCookRecipeState()
+                onNavigateBack()
+            }
+            is com.teamconfused.planmyplate.ui.viewmodels.CookRecipeUiState.InsufficientIngredients -> {
+                showMissingIngredientsDialog = cookRecipeState as com.teamconfused.planmyplate.ui.viewmodels.CookRecipeUiState.InsufficientIngredients
+            }
+            is com.teamconfused.planmyplate.ui.viewmodels.CookRecipeUiState.Error -> {
+                showErrorDialog = (cookRecipeState as com.teamconfused.planmyplate.ui.viewmodels.CookRecipeUiState.Error).message
+            }
+            else -> {}
+        }
+    }
+
+    showMissingIngredientsDialog?.let { data ->
+        AlertDialog(
+            onDismissRequest = { 
+                showMissingIngredientsDialog = null 
+                viewModel.resetCookRecipeState()
+            },
+            title = { 
+                Text(
+                    text = data.title.ifBlank { "Missing Pantry Items" },
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                ) 
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "You do not have enough ingredients in your pantry. Would you like to force cook anyway?",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    
+                    Text(
+                        text = "Missing Items:",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    
+                    data.missing.forEach { item ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "• ${item.name}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "Need ${item.required}${item.unit} (Have ${item.available}${item.unit})",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.End
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val missingData = showMissingIngredientsDialog
+                        showMissingIngredientsDialog = null
+                        if (missingData != null) {
+                            viewModel.cookRecipe(recipeId, force = true)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Force Cook")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showMissingIngredientsDialog = null 
+                        viewModel.resetCookRecipeState()
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    showErrorDialog?.let { errorMsg ->
+        AlertDialog(
+            onDismissRequest = { 
+                showErrorDialog = null 
+                viewModel.resetCookRecipeState()
+            },
+            title = { Text("Error Cooking Recipe") },
+            text = { Text(errorMsg) },
+            confirmButton = {
+                Button(onClick = { 
+                    showErrorDialog = null 
+                    viewModel.resetCookRecipeState()
+                }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
     var isAdded by remember { mutableStateOf(isInitiallyAdded) }
 
     LaunchedEffect(recipeId) {
@@ -94,18 +213,26 @@ fun RecipeDetailsScreen(
 
                             Button(
                                 onClick = {
-                                    onCooked(mealType, currentRecipe.calories ?: 0, currentRecipe.recipeId)
-                                    onNavigateBack()
+                                    viewModel.cookRecipe(currentRecipe.recipeId ?: 0)
                                 },
+                                enabled = cookRecipeState !is com.teamconfused.planmyplate.ui.viewmodels.CookRecipeUiState.Loading,
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp),
                                 contentPadding = PaddingValues(16.dp)
                             ) {
-                                Text(
-                                    "Cooked",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                if (cookRecipeState is com.teamconfused.planmyplate.ui.viewmodels.CookRecipeUiState.Loading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text(
+                                        "Cooked",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }

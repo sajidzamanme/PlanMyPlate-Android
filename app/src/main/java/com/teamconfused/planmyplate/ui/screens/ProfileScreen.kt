@@ -14,6 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,9 +40,37 @@ fun ProfileScreen(
     onUpdateProfileClick: () -> Unit,
     onEditProfileClick: () -> Unit,
     onLogoutClick: () -> Unit,
+    onDeleteAccountClick: () -> Unit,
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete Account") },
+            text = { Text("Are you sure you want to delete your account? This action is permanent and cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirmation = false
+                        viewModel.deleteAccount {
+                            onDeleteAccountClick()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(lifecycleOwner) {
@@ -214,7 +245,7 @@ fun ProfileScreen(
                             ProfileRow(icon = Icons.Default.Home, label = "BMI Info", value = "$bmiVal (${prefs.bmiCategory})")
                         }
 
-                        ProfileRow(icon = Icons.Default.FavoriteBorder, label = "Diet Preference", value = prefs?.diet ?: "Not Set")
+                        ProfileRow(icon = Icons.Default.FavoriteBorder, label = "Diet Preference", value = prefs?.diets?.joinToString(", ") ?: "Not Set")
                         
                         val budgetVal = prefs?.budget?.let { "৳${it.toInt()}" } ?: "Not Set"
                         ProfileRow(icon = Icons.Default.DateRange, label = "Daily Budget", value = budgetVal)
@@ -291,6 +322,23 @@ fun ProfileScreen(
                     ) {
                         Text(
                             text = "Logout",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = { showDeleteConfirmation = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(16.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            text = "Delete Account",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
