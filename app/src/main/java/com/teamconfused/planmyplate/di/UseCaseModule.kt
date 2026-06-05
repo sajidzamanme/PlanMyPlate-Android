@@ -5,6 +5,7 @@ import com.teamconfused.planmyplate.domain.usecase.FilterRecipesUseCase
 import com.teamconfused.planmyplate.domain.usecase.GenerateMealPlanUseCase
 import com.teamconfused.planmyplate.domain.usecase.GenerateRecipeUseCase
 import com.teamconfused.planmyplate.domain.usecase.GetAllRecipesUseCase
+import com.teamconfused.planmyplate.domain.usecase.GetRecipeUseCase
 import com.teamconfused.planmyplate.domain.usecase.GetTodaysMealsUseCase
 import org.koin.dsl.module
 
@@ -15,5 +16,5 @@ val useCaseModule = module {
     factory { GetAllRecipesUseCase(get()) }
     factory { FilterRecipesUseCase(get()) }
     factory { CreateMealPlanUseCase(get()) }
-    factory { com.teamconfused.planmyplate.domain.usecase.GetRecipeUseCase(get()) }
+    factory { GetRecipeUseCase(get()) }
 }
