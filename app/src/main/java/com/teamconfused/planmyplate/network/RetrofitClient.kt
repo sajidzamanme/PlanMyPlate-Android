@@ -42,4 +42,6 @@ object RetrofitClient {
     val inventoryService: InventoryService by lazy { retrofit.create(InventoryService::class.java) }
     val aiService: AiService by lazy { retrofit.create(AiService::class.java) }
     val expiryService: ExpiryService by lazy { retrofit.create(ExpiryService::class.java) }
+    val favoriteService: FavoriteService by lazy { retrofit.create(FavoriteService::class.java) }
+    val ratingService: RatingService by lazy { retrofit.create(RatingService::class.java) }
 }

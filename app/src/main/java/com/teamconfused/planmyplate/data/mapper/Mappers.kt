@@ -30,6 +30,12 @@ import com.teamconfused.planmyplate.domain.model.User
 import com.teamconfused.planmyplate.domain.model.UserPreferences
 import com.teamconfused.planmyplate.domain.model.ExpiryItem
 import com.teamconfused.planmyplate.domain.model.SoonToExpireResult
+import com.teamconfused.planmyplate.data.model.UserFavoriteResponse
+import com.teamconfused.planmyplate.domain.model.UserFavorite
+import com.teamconfused.planmyplate.data.model.RecipeRatingResponse
+import com.teamconfused.planmyplate.data.model.RecipeRatingSummary as RatingSummaryDto
+import com.teamconfused.planmyplate.domain.model.RecipeRating
+import com.teamconfused.planmyplate.domain.model.RecipeRatingSummary as RatingSummaryDomain
 
 // Recipe Mappers
 fun RecipeResponse.toDomain(): Recipe {
@@ -38,6 +44,10 @@ fun RecipeResponse.toDomain(): Recipe {
         name = this.name,
         description = this.description ?: "",
         calories = this.calories ?: 0,
+        protein = this.protein,
+        carbs = this.carbs,
+        fat = this.fat,
+        fiber = this.fiber,
         prepTime = this.prepTime,
         cookTime = this.cookTime,
         servings = this.servings,
@@ -76,10 +86,12 @@ fun UserPreferencesResponse.toDomain(): UserPreferences {
         diet = this.diet,
         allergies = this.allergies,
         dislikes = this.dislikes,
-        servings = this.servings,
         budget = this.budget,
-        age = this.age,
-        weight = this.weight
+        height = this.height,
+        weight = this.weight,
+        gender = this.gender,
+        bmi = this.bmi,
+        bmiCategory = this.bmiCategory
     )
 }
 
@@ -195,5 +207,35 @@ fun SoonToExpireResponse.toDomain(): SoonToExpireResult {
         totalCount = this.totalCount,
         expiredCount = this.expiredCount,
         items = this.items?.map { it.toDomain() }
+    )
+}
+
+fun UserFavoriteResponse.toDomain(): UserFavorite {
+    return UserFavorite(
+        id = this.id,
+        userId = this.userId,
+        recipeId = this.recipeId,
+        recipe = this.recipe?.toDomain(),
+        createdAt = this.createdAt
+    )
+}
+
+fun RecipeRatingResponse.toDomain(): RecipeRating {
+    return RecipeRating(
+        ratingId = this.ratingId,
+        userId = this.userId,
+        recipeId = this.recipeId,
+        rating = this.rating,
+        review = this.review,
+        createdAt = this.createdAt,
+        updatedAt = this.updatedAt
+    )
+}
+
+fun RatingSummaryDto.toDomain(): RatingSummaryDomain {
+    return RatingSummaryDomain(
+        recipeId = this.recipeId,
+        averageRating = this.averageRating,
+        totalRatings = this.totalRatings
     )
 }

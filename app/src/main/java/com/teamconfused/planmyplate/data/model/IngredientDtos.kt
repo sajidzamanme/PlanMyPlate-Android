@@ -4,11 +4,17 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class TagDto(
+    val tagId: Int,
+    val tagName: String
+)
+
+@Serializable
 data class IngredientDto(
-    @SerialName("ing_id") val ingId: Int? = null,
+    @SerialName("ingId") val ingId: Int? = null,
     val name: String,
     val price: Double? = null,
-    val tags: List<String>? = null
+    val tags: List<TagDto>? = null
 )
 
 @Serializable
@@ -19,6 +25,6 @@ data class IngredientRequest(
 
 @Serializable
 data class IngredientRefDto(
-    @SerialName("ing_id") val ingId: Int,
+    @SerialName("ingId") val ingId: Int,
     val name: String? = null
 )

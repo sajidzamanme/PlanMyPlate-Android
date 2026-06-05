@@ -159,7 +159,18 @@ Retrieve profile of the currently authenticated user.
   }
   ```
   > All fields are optional. Only provided fields are updated.
-- **Response Body:** Updated User object.
+- **Response Body:**
+  ```json
+  {
+    "userId": 1,
+    "firstName": "John",
+    "lastName": "Updated",
+    "email": "john.doe@example.com",
+    "phone": "+8801700000000",
+    "dateOfBirth": "1998-06-20"
+  }
+  ```
+
 
 ### Delete User
 - **URL:** `/api/users/{user_id}`
@@ -191,9 +202,16 @@ Manage dietary preferences, allergies, and dislikes. Requires authentication.
     "diet": "Vegan",
     "allergies": ["Peanuts", "Shellfish"],
     "dislikes": ["Mushrooms"],
-    "budget": 150.00
+    "budget": 150.00,
+    "height": 170.00,
+    "weight": 65.00,
+    "gender": "female",
+    "bmi": 22.5,
+    "bmi_category": "Normal weight"
   }
   ```
+  > `bmi` is computed server-side as `weight(kg) / height(m)²`. Returns `null` if height or weight is missing.  
+  > `bmi_category` is age-aware: youth (<20), standard adult (20–64), senior (65+) thresholds are applied automatically.
 
 ### Set/Update Preferences
 - **URL:** `/api/user-preferences/{user_id}`
@@ -206,9 +224,15 @@ Manage dietary preferences, allergies, and dislikes. Requires authentication.
     "diet": "Vegan",
     "allergies": ["Peanuts"],
     "dislikes": [],
-    "budget": 200.00
+    "budget": 200.00,
+    "height": 170.00,
+    "weight": 65.00,
+    "gender": "female"
   }
   ```
+  > `gender` accepted values: `"male"`, `"female"`, `"other"`.  
+  > `height` in **cm**, `weight` in **kg**.  
+  > `bmi` and `bmi_category` are always computed by the server — do not send them.
 - **Response Body:** Updated preferences object (same structure as GET).
 
 ---
@@ -227,15 +251,25 @@ Manage dietary preferences, allergies, and dislikes. Requires authentication.
       "name": "Chicken Bhuna",
       "description": "Spicy dry chicken curry",
       "calories": 520,
+      "protein": 42.0,
+      "carbs": 8.0,
+      "fat": 18.0,
+      "fiber": 1.5,
       "prepTime": 15,
       "cookTime": 35,
-      "servings": 3,
       "instructions": "...",
       "imageUrl": "https://...",
       "recipeIngredients": [
         {
           "id": 1,
-          "ingredient": { "ingId": 2, "name": "Chicken", "price": 4.50, "tags": [] },
+          "ingredient": { 
+            "ingId": 2, 
+            "name": "Chicken", 
+            "price": 4.50, 
+            "tags": [
+              { "tagId": 1, "tagName": "Poultry" }
+            ] 
+          },
           "quantity": 500,
           "unit": "g"
         }
@@ -243,6 +277,8 @@ Manage dietary preferences, allergies, and dislikes. Requires authentication.
     }
   ]
   ```
+  > `protein`, `carbs`, `fat`, `fiber` are all **per serving** in grams. Any field may be `null` if not provided.
+  > `tags` inside ingredients are objects with `tagId` (integer) and `tagName` (string).
 
 ### Search Recipes
 - **URL:** `/api/recipes/search?name=chicken`
@@ -263,9 +299,12 @@ Manage dietary preferences, allergies, and dislikes. Requires authentication.
     "name": "Custom Pasta",
     "description": "My special pasta recipe",
     "calories": 450,
+    "protein": 20.0,
+    "carbs": 55.0,
+    "fat": 12.0,
+    "fiber": 3.0,
     "prepTime": 30,
     "cookTime": 20,
-    "servings": 4,
     "instructions": "1. Boil water\n2. Cook pasta\n3. Add sauce",
     "imageUrl": "https://example.com/custom_pasta.jpg",
     "ingredients": [
@@ -277,12 +316,29 @@ Manage dietary preferences, allergies, and dislikes. Requires authentication.
     ]
   }
   ```
+  > `protein`, `carbs`, `fat`, `fiber` are optional — all in grams per serving.
 - **Response Body (201 Created):** Created Recipe object with assigned `recipeId`.
 
 ### Get Recipe by ID
 - **URL:** `/api/recipes/{id}`
 - **Method:** `GET`
 - **Response Body:** Single Recipe object.
+
+### Update Recipe
+- **URL:** `/api/recipes/{id}`
+- **Method:** `PUT`
+- **Request Body:** Same format as Create Recipe.
+- **Response Body:** Updated Recipe object.
+
+### Delete Recipe
+- **URL:** `/api/recipes/{id}`
+- **Method:** `DELETE`
+- **Response Body:**
+  ```json
+  {
+    "message": "Recipe deleted successfully"
+  }
+  ```
 
 ---
 
@@ -564,11 +620,12 @@ All inventory endpoints require authentication.
 - **Response Body:**
   ```json
   [
-    { "dietId": 1, "dietName": "Omnivore" },
-    { "dietId": 2, "dietName": "Vegetarian" },
-    { "dietId": 3, "dietName": "Vegan" }
+    { "diet_id": 1, "diet_name": "Omnivore" },
+    { "diet_id": 2, "diet_name": "Vegetarian" },
+    { "diet_id": 3, "diet_name": "Vegan" }
   ]
   ```
+
 
 > For **allergies and dislikes**, use `GET /api/ingredients` — users select from the same ingredient list for both.
 
@@ -614,7 +671,6 @@ Generate a custom recipe using Google Gemini AI based on user preferences and co
     "allergies": ["peanuts"],
     "dietaryPreference": "None",
     "mood": "Comfort Food",
-    "servings": 4,
     "maxCookingTime": 45
   }
   ```
@@ -626,7 +682,6 @@ Generate a custom recipe using Google Gemini AI based on user preferences and co
 - `allergies` (optional): List of allergens to avoid
 - `dietaryPreference` (optional): Dietary restriction (e.g., Vegan, Vegetarian, Keto)
 - `mood` (optional): Occasion or mood (e.g., Comfort Food, Quick & Easy)
-- `servings` (required): Number of servings (1-20)
 - `maxCookingTime` (optional): Maximum total cooking time in minutes (5-300)
 
 - **Response Body (201 Created):** Created Recipe object (same structure as Recipe endpoints).
@@ -805,7 +860,138 @@ Permanently removes an item from the inventory.
 
 ---
 
-## 13. Admin Endpoints
+## 13. Recipe Ratings
+Rate recipes and retrieve rating summaries. All write endpoints require authentication.
+
+### Rate a Recipe (Create or Update)
+Submit a 1–5 star rating with an optional text review. If the user has already rated this recipe, the existing rating is updated (upsert).
+
+- **URL:** `/api/ratings/`
+- **Method:** `POST`
+- **Headers:** `Authorization: Bearer <token>`
+- **Request Body:**
+  ```json
+  {
+    "recipeId": 1,
+    "rating": 4,
+    "review": "Really flavourful, would make again!"
+  }
+  ```
+  > `rating`: Integer from **1 to 5** (required).  
+  > `review`: Optional free-text string.
+- **Response Body (201 Created):**
+  ```json
+  {
+    "ratingId": 7,
+    "userId": 1,
+    "recipeId": 1,
+    "rating": 4,
+    "review": "Really flavourful, would make again!",
+    "createdAt": "2026-05-15T10:30:00",
+    "updatedAt": "2026-05-15T10:30:00"
+  }
+  ```
+
+### Get My Rating for a Recipe
+Retrieve the current user's own rating for a specific recipe.
+
+- **URL:** `/api/ratings/my/{recipe_id}`
+- **Method:** `GET`
+- **Headers:** `Authorization: Bearer <token>`
+- **Response Body:** `RecipeRatingResponse` object (same structure as above). Returns **404** if the user hasn't rated this recipe yet.
+
+### Get Rating Summary for a Recipe
+Get the aggregated average rating and total count for any recipe. No authentication required.
+
+- **URL:** `/api/ratings/recipe/{recipe_id}`
+- **Method:** `GET`
+- **Response Body:**
+  ```json
+  {
+    "recipeId": 1,
+    "averageRating": 4.3,
+    "totalRatings": 12
+  }
+  ```
+  > Returns **404** if the recipe does not exist.
+
+### Delete My Rating
+Remove the current user's rating for a recipe.
+
+- **URL:** `/api/ratings/{recipe_id}`
+- **Method:** `DELETE`
+- **Headers:** `Authorization: Bearer <token>`
+- **Response Body:**
+  ```json
+  { "message": "Rating deleted successfully" }
+  ```
+  > Returns **404** if no rating exists for this user/recipe pair.
+
+---
+
+## 14. Favourites
+Save and manage favourite recipes. All endpoints require authentication.
+
+### Add a Recipe to Favourites
+- **URL:** `/api/favorites/{recipe_id}`
+- **Method:** `POST`
+- **Headers:** `Authorization: Bearer <token>`
+- **Response Body (201 Created):**
+  ```json
+  {
+    "id": 3,
+    "userId": 1,
+    "recipeId": 5,
+    "recipe": {
+      "recipeId": 5,
+      "name": "Rui Machher Jhol",
+      "description": "Light fish curry",
+      "calories": 450,
+      "protein": null,
+      "carbs": null,
+      "fat": null,
+      "fiber": null,
+      "prepTime": 15,
+      "cookTime": 30,
+      "imageUrl": "https://...",
+      "recipeIngredients": []
+    },
+    "createdAt": "2026-05-15T10:45:00"
+  }
+  ```
+  > Returns **404** if recipe does not exist. Returns **409** if the recipe is already in favourites.
+
+### Remove a Recipe from Favourites
+- **URL:** `/api/favorites/{recipe_id}`
+- **Method:** `DELETE`
+- **Headers:** `Authorization: Bearer <token>`
+- **Response Body:**
+  ```json
+  { "message": "Favorite removed successfully" }
+  ```
+  > Returns **404** if the recipe was not in favourites.
+
+### List My Favourite Recipes
+- **URL:** `/api/favorites/`
+- **Method:** `GET`
+- **Headers:** `Authorization: Bearer <token>`
+- **Query Parameters:** `skip` (default: 0), `limit` (default: 100)
+- **Response Body:** List of `UserFavoriteResponse` objects (same structure as Add response above).
+
+### Check Favourite Status
+Quickly check whether a specific recipe is in the current user's favourites.
+
+- **URL:** `/api/favorites/{recipe_id}/status`
+- **Method:** `GET`
+- **Headers:** `Authorization: Bearer <token>`
+- **Response Body:**
+  ```json
+  { "isFavorite": true }
+  ```
+
+---
+
+## 15. Admin Endpoints
 
 Admin endpoints for managing reference data and performing administrative tasks. Require authentication (`Authorization: Bearer <token>`).
 
@@ -829,7 +1015,15 @@ Look up any user's profile.
     "price": 3.50
   }
   ```
-- **Response Body (201 Created):** Created Ingredient object.
+- **Response Body (201 Created):**
+  ```json
+  {
+    "ingId": 12,
+    "name": "Coconut",
+    "price": 3.50,
+    "tags": []
+  }
+  ```
 
 ### Update Ingredient
 - **URL:** `/api/admin/ingredients/{id}`
@@ -841,10 +1035,25 @@ Look up any user's profile.
     "price": 4.00
   }
   ```
+- **Response Body:**
+  ```json
+  {
+    "ingId": 12,
+    "name": "Updated Name",
+    "price": 4.00,
+    "tags": []
+  }
+  ```
 
 ### Delete Ingredient
 - **URL:** `/api/admin/ingredients/{id}`
 - **Method:** `DELETE`
+- **Response Body:**
+  ```json
+  {
+    "message": "Ingredient deleted successfully"
+  }
+  ```
 
 ### Update Recipe
 - **URL:** `/api/admin/recipes/{id}`
@@ -864,7 +1073,7 @@ Look up any user's profile.
 
 ---
 
-## 14. Error Handling
+## 16. Error Handling
 
 The API uses standard HTTP status codes and returns structured error responses.
 
