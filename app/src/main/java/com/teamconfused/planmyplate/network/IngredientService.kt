@@ -5,6 +5,7 @@ import com.teamconfused.planmyplate.data.model.IngredientRequest
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -17,24 +18,25 @@ interface IngredientService {
     @GET("api/ingredients/{id}")
     suspend fun getIngredientById(@Path("id") id: Int): IngredientDto
 
-    @POST("api/ingredients/")
-    suspend fun createIngredient(@Body request: IngredientRequest): IngredientDto
+    @POST("api/admin/ingredients")
+    suspend fun createIngredient(
+        @Header("Authorization") token: String,
+        @Body request: IngredientRequest
+    ): IngredientDto
 
-    @PUT("api/ingredients/{id}")
+    @PUT("api/admin/ingredients/{id}")
     suspend fun updateIngredient(
+        @Header("Authorization") token: String,
         @Path("id") id: Int,
         @Body request: IngredientRequest
     ): IngredientDto
 
-    @DELETE("api/ingredients/{id}")
-    suspend fun deleteIngredient(@Path("id") id: Int): Map<String, String>
+    @DELETE("api/admin/ingredients/{id}")
+    suspend fun deleteIngredient(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Map<String, String>
 
     @GET("api/ingredients/search")
     suspend fun searchIngredientsByName(@Query("name") name: String): List<IngredientDto>
-
-    @GET("api/ingredients/price/range")
-    suspend fun filterIngredientsByPrice(
-        @Query("minPrice") minPrice: Float,
-        @Query("maxPrice") maxPrice: Float
-    ): List<IngredientDto>
 }

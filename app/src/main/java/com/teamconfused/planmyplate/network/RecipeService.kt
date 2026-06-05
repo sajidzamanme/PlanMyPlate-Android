@@ -16,8 +16,12 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface RecipeService {
-    @GET("api/recipes/")
-    suspend fun getAllRecipes(@Header("Authorization") token: String): List<RecipeResponse>
+    @GET("api/recipes")
+    suspend fun getAllRecipes(
+        @Header("Authorization") token: String,
+        @Query("skip") skip: Int? = null,
+        @Query("limit") limit: Int? = null
+    ): List<RecipeResponse>
 
     @GET("api/recipes/{id}")
     suspend fun getRecipeById(

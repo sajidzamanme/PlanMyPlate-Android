@@ -5,12 +5,12 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class SignupRequest(
-    @SerialName("first_name") val firstName: String,
-    @SerialName("last_name") val lastName: String,
+    @SerialName("firstName") val firstName: String,
+    @SerialName("lastName") val lastName: String,
     val email: String,
     val password: String,
     val phone: String,
-    @SerialName("date_of_birth") val dateOfBirth: String
+    @SerialName("dateOfBirth") val dateOfBirth: String
 )
 
 @Serializable
@@ -24,11 +24,11 @@ data class AuthResponse(
     @SerialName("access_token") val accessToken: String? = null,
     @SerialName("token_type") val tokenType: String? = null,
     val email: String? = null,
-    @SerialName("first_name") val firstName: String? = null,
-    @SerialName("last_name") val lastName: String? = null,
-    @SerialName("user_id") val userId: Int? = null,
+    @SerialName("firstName") val firstName: String? = null,
+    @SerialName("lastName") val lastName: String? = null,
+    @SerialName("userId") val userId: Int? = null,
     val phone: String? = null,
-    @SerialName("date_of_birth") val dateOfBirth: String? = null,
+    @SerialName("dateOfBirth") val dateOfBirth: String? = null,
     val message: String? = null
 )
 
@@ -44,8 +44,8 @@ data class ForgotPasswordResponse(
 
 @Serializable
 data class ResetPasswordRequest(
-    @SerialName("reset_token") val resetToken: String,
-    @SerialName("new_password") val newPassword: String
+    @SerialName("resetToken") val resetToken: String,
+    @SerialName("newPassword") val newPassword: String
 )
 
 @Serializable

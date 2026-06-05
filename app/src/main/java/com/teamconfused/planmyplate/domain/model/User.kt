@@ -22,10 +22,12 @@ data class UserPreferences(
     val diet: String? = null,
     val allergies: List<String>? = null,
     val dislikes: List<String>? = null,
-    val servings: Int? = null,
     val budget: Float? = null,
-    val age: Int? = null,
-    val weight: Float? = null
+    val height: Float? = null,
+    val weight: Float? = null,
+    val gender: String? = null,
+    val bmi: Double? = null,
+    val bmiCategory: String? = null
 )
 
 @Serializable

@@ -5,12 +5,12 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class UserDto(
-    @SerialName("user_id") val userId: Int? = null,
-    @SerialName("first_name") val firstName: String? = null,
-    @SerialName("last_name") val lastName: String? = null,
+    @SerialName("userId") val userId: Int? = null,
+    @SerialName("firstName") val firstName: String? = null,
+    @SerialName("lastName") val lastName: String? = null,
     val email: String? = null,
     val phone: String? = null,
-    @SerialName("date_of_birth") val dateOfBirth: String? = null,
+    @SerialName("dateOfBirth") val dateOfBirth: String? = null,
     val age: Int? = null,
     val weight: Float? = null,
     val budget: Float? = null
@@ -18,10 +18,10 @@ data class UserDto(
 
 @Serializable
 data class UpdateUserRequest(
-    @SerialName("first_name") val firstName: String? = null,
-    @SerialName("last_name") val lastName: String? = null,
+    @SerialName("firstName") val firstName: String? = null,
+    @SerialName("lastName") val lastName: String? = null,
     val phone: String? = null,
-    @SerialName("date_of_birth") val dateOfBirth: String? = null,
+    @SerialName("dateOfBirth") val dateOfBirth: String? = null,
     val age: Int? = null,
     val weight: Float? = null,
     val budget: Float? = null
@@ -29,25 +29,29 @@ data class UpdateUserRequest(
 
 @Serializable
 data class UserPreferencesRequest(
-    @SerialName("user_id") val userId: Int,
+    @SerialName("userId") val userId: Int,
     val diet: String? = null,
     val allergies: List<String>? = null,
     val dislikes: List<String>? = null,
-    val servings: Int? = null,
-    val budget: Float? = null
+    val budget: Float? = null,
+    val height: Float? = null,
+    val weight: Float? = null,
+    val gender: String? = null
 )
 
 @Serializable
 data class UserPreferencesResponse(
-    @SerialName("pref_id") val prefId: Int? = null,
-    @SerialName("user_id") val userId: Int? = null,
+    @SerialName("prefId") val prefId: Int? = null,
+    @SerialName("userId") val userId: Int? = null,
     val diet: String? = null,
     val allergies: List<String>? = null,
     val dislikes: List<String>? = null,
-    val servings: Int? = null,
     val budget: Float? = null,
-    val age: Int? = null,
-    val weight: Float? = null
+    val height: Float? = null,
+    val weight: Float? = null,
+    val gender: String? = null,
+    val bmi: Double? = null,
+    @SerialName("bmi_category") val bmiCategory: String? = null
 )
 
 @Serializable
