@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.teamconfused.planmyplate.data.model.CreateRecipeRequest
 import com.teamconfused.planmyplate.data.model.RecipeIngredientRequest
 import com.teamconfused.planmyplate.network.RecipeService
+import com.teamconfused.planmyplate.util.NetworkUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -118,7 +119,7 @@ class AddRecipeViewModel(
                 }
             } catch (e: Exception) {
                 Log.e("AddRecipeViewModel", "Image upload failed: ${e.message}", e)
-                _uiState.update { it.copy(isUploadingImage = false, errorMessage = "Upload failed: ${e.message}") }
+                _uiState.update { it.copy(isUploadingImage = false, errorMessage = "Upload failed: ${NetworkUtils.parseError(e)}") }
             }
         }
     }
@@ -212,7 +213,7 @@ class AddRecipeViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "Failed to create recipe: ${e.message}"
+                        errorMessage = "Failed to create recipe: ${NetworkUtils.parseError(e)}"
                     )
                 }
             }

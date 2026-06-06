@@ -19,7 +19,7 @@ data class User(
 data class UserPreferences(
     val prefId: Int? = null,
     val userId: Int? = null,
-    val diet: String? = null,
+    val diets: List<String>? = null,
     val allergies: List<String>? = null,
     val dislikes: List<String>? = null,
     val budget: Float? = null,

@@ -66,7 +66,7 @@ class ProfileViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = e.localizedMessage ?: "Failed to load profile details"
+                        errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e)
                     )
                 }
             }
@@ -75,5 +75,27 @@ class ProfileViewModel(
 
     fun logout() {
         sessionManager.clearSession()
+    }
+
+    fun deleteAccount(onSuccess: () -> Unit) {
+        val userId = sessionManager.getUserId()
+        val token = sessionManager.getAuthToken()
+        if (userId == -1 || token == null) {
+            sessionManager.clearSession()
+            onSuccess()
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            try {
+                userService.deleteUser("Bearer $token", userId)
+            } catch (e: Exception) {
+                Log.e("ProfileViewModel", "Failed to delete account from backend, clearing session locally anyway", e)
+            } finally {
+                sessionManager.clearSession()
+                _uiState.update { it.copy(isLoading = false) }
+                onSuccess()
+            }
+        }
     }
 }

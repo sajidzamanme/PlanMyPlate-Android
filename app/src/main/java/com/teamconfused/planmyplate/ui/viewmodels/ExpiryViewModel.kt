@@ -49,7 +49,7 @@ class ExpiryViewModel(
                 _uiState.update { it.copy(isLoading = false, expiryItems = items) }
             } catch (e: Exception) {
                 Log.e("ExpiryViewModel", "Failed to fetch expiry items: ${e.message}", e)
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _uiState.update { it.copy(isLoading = false, errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e)) }
             }
         }
     }
@@ -68,7 +68,7 @@ class ExpiryViewModel(
                 _uiState.update { it.copy(isLoading = false, soonToExpire = result) }
             } catch (e: Exception) {
                 Log.e("ExpiryViewModel", "Failed to fetch soon to expire items: ${e.message}", e)
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _uiState.update { it.copy(isLoading = false, errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e)) }
             }
         }
     }
@@ -95,7 +95,7 @@ class ExpiryViewModel(
                 onSuccess()
             } catch (e: Exception) {
                 Log.e("ExpiryViewModel", "Failed to add expiry item: ${e.message}", e)
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _uiState.update { it.copy(isLoading = false, errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e)) }
             }
         }
     }
@@ -118,7 +118,7 @@ class ExpiryViewModel(
                 fetchExpiryItems()
             } catch (e: Exception) {
                 Log.e("ExpiryViewModel", "Failed to delete expiry item: ${e.message}", e)
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _uiState.update { it.copy(isLoading = false, errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e)) }
             }
         }
     }
@@ -140,7 +140,7 @@ class ExpiryViewModel(
                 fetchExpiryItems()
             } catch (e: Exception) {
                 Log.e("ExpiryViewModel", "Failed to update expiry item: ${e.message}", e)
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _uiState.update { it.copy(isLoading = false, errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e)) }
             }
         }
     }

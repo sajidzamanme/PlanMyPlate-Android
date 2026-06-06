@@ -25,7 +25,9 @@ data class HomeUiState(
     val consumedCalories: Int = 0,
     val cookedMeals: Set<String> = emptySet(),
     val skippedMeals: Set<String> = emptySet(),
-    val additionalMeals: List<AdditionalMeal> = emptyList()
+    val additionalMeals: List<AdditionalMeal> = emptyList(),
+    val pantryIngredients: List<String> = emptyList(),
+    val searchResults: List<com.teamconfused.planmyplate.data.model.IngredientDto> = emptyList()
 ) {
     val todayCalories: Int
         get() = (todayBreakfast?.calories ?: 0) + 
@@ -40,7 +42,9 @@ data class HomeUiState(
 class HomeViewModel(
     private val getTodaysMealsUseCase: GetTodaysMealsUseCase,
     private val generateRecipeUseCase: GenerateRecipeUseCase,
-    private val sessionManager: com.teamconfused.planmyplate.util.SessionManager
+    private val sessionManager: com.teamconfused.planmyplate.util.SessionManager,
+    private val inventoryRepository: com.teamconfused.planmyplate.domain.repository.InventoryRepository,
+    private val ingredientService: com.teamconfused.planmyplate.network.IngredientService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -67,12 +71,46 @@ class HomeViewModel(
         }
     }
 
+    fun fetchPantryIngredients() {
+        val userId = sessionManager.getUserId()
+        if (userId == -1) return
+
+        viewModelScope.launch {
+            try {
+                val token = sessionManager.getAuthToken() ?: return@launch
+                val authHeader = "Bearer $token"
+                val inventory = inventoryRepository.getInventoryForUser(authHeader, userId)
+                val names = inventory.items?.mapNotNull { it.ingredient?.name } ?: emptyList()
+                _uiState.update { it.copy(pantryIngredients = names) }
+            } catch (e: Exception) {
+                Log.e("HomeViewModel", "Failed to fetch pantry ingredients", e)
+            }
+        }
+    }
+
+    fun searchIngredients(query: String) {
+        if (query.isBlank()) {
+            _uiState.update { it.copy(searchResults = emptyList()) }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val results = ingredientService.searchIngredientsByName(query)
+                _uiState.update { it.copy(searchResults = results) }
+            } catch (e: Exception) {
+                Log.e("HomeViewModel", "Search failed: ${e.message}", e)
+            }
+        }
+    }
+
     fun fetchTodaysMeals() {
         val userId = sessionManager.getUserId()
         if (userId == -1) {
              _uiState.update { it.copy(isLoading = false, errorMessage = "User not logged in") }
             return
         }
+
+        fetchPantryIngredients()
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
@@ -102,7 +140,7 @@ class HomeViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = e.message ?: "Failed to fetch meals"
+                        errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e)
                     )
                 }
             }
@@ -133,7 +171,7 @@ class HomeViewModel(
             try {
                 val token = sessionManager.getAuthToken() ?: ""
                 
-                val diet = sessionManager.getUserPreferences().diet
+                val diet = sessionManager.getUserPreferences().diets?.firstOrNull() ?: "None"
                 val mood = otherParams["mood"] as? String
 
                 Log.d("HomeViewModel", "Starting AI Recipe generation for type: $mealType with mood: $mood")

@@ -144,7 +144,7 @@ class SignupViewModel(
                             val prefsResponse = userPreferencesService.getPreferences(authHeader, userId)
                             val prefs = prefsResponse.toDomain()
                             sessionManager.saveUserPreferences(prefs)
-                            hasPreferences = prefs.prefId != null || prefs.diet != null || prefs.budget != null
+                            hasPreferences = prefs.prefId != null || !prefs.diets.isNullOrEmpty() || prefs.budget != null
                         } catch (e: Exception) {
                             Log.e("SignupViewModel", "Failed to fetch user preferences: ${e.message}", e)
                             hasPreferences = false
@@ -159,7 +159,7 @@ class SignupViewModel(
                     _uiState.update { 
                         it.copy(
                             isLoading = false, 
-                            errorMessage = e.localizedMessage ?: "Signup failed. Please try again."
+                            errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e)
                         ) 
                     }
                 }

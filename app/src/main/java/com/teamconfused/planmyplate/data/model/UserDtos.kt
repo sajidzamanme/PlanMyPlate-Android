@@ -30,7 +30,7 @@ data class UpdateUserRequest(
 @Serializable
 data class UserPreferencesRequest(
     @SerialName("userId") val userId: Int,
-    val diet: String? = null,
+    val diets: List<String>? = null,
     val allergies: List<String>? = null,
     val dislikes: List<String>? = null,
     val budget: Float? = null,
@@ -43,7 +43,7 @@ data class UserPreferencesRequest(
 data class UserPreferencesResponse(
     @SerialName("prefId") val prefId: Int? = null,
     @SerialName("userId") val userId: Int? = null,
-    val diet: String? = null,
+    val diets: List<String>? = null,
     val allergies: List<String>? = null,
     val dislikes: List<String>? = null,
     val budget: Float? = null,

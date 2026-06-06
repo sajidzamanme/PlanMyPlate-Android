@@ -89,8 +89,8 @@ class LoginViewModel(
                             // Save preferences locally
                             sessionManager.saveUserPreferences(prefs)
                             
-                            // Basic check: if diet or budget are set, we assume preferences exist
-                            hasPreferences = prefs.prefId != null || prefs.diet != null || prefs.budget != null
+                            // Basic check: if diets or budget are set, we assume preferences exist
+                            hasPreferences = prefs.prefId != null || !prefs.diets.isNullOrEmpty() || prefs.budget != null
                         } catch (e: Exception) {
                             Log.e("LoginViewModel", "Failed to fetch user preferences: ${e.message}", e)
                             // If it fails (e.g. 404), assume preferences are not set
@@ -107,7 +107,7 @@ class LoginViewModel(
                     _uiState.update { 
                         it.copy(
                             isLoading = false, 
-                            errorMessage = e.localizedMessage ?: "Login failed. Please try again."
+                            errorMessage = com.teamconfused.planmyplate.util.NetworkUtils.parseError(e)
                         ) 
                     }
                 }

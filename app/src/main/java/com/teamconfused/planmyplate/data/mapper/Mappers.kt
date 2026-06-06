@@ -83,7 +83,7 @@ fun UserPreferencesResponse.toDomain(): UserPreferences {
     return UserPreferences(
         prefId = this.prefId,
         userId = this.userId,
-        diet = this.diet,
+        diets = this.diets,
         allergies = this.allergies,
         dislikes = this.dislikes,
         budget = this.budget,
